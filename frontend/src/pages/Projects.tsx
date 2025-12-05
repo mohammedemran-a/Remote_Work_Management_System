@@ -75,7 +75,7 @@ interface ProjectAPIResponse {
   teamMembers: number;
 }
 
-const ProjectsPage = () => {
+const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -106,19 +106,19 @@ const ProjectsPage = () => {
     loadUsers();
   }, [loadUsers]);
 
-      const { data: projects = [], isLoading, isError } = useQuery({
-        queryKey: ["projects"],
-        queryFn: async () => {
-          const res = await getProjects();
-          return res.data.map((p: ProjectAPIResponse) => ({
-            ...p,
-            progress: Number.isFinite(p.completedTasks) && Number.isFinite(p.tasks) && p.tasks > 0
-              ? Math.round((p.completedTasks / p.tasks) * 100)
-              : 0,
-            manager_name: p.manager?.name || ""
-          }));
-        },
-      });
+  const { data: projects = [], isLoading, isError } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const res = await getProjects();
+      return res.data.map((p: ProjectAPIResponse) => ({
+        ...p,
+        progress: Number.isFinite(p.completedTasks) && Number.isFinite(p.tasks) && p.tasks > 0
+          ? Math.round((p.completedTasks / p.tasks) * 100)
+          : 0,
+        manager_name: p.manager?.name || ""
+      }));
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: ProjectPayload) => createProject(data),
@@ -316,16 +316,15 @@ const ProjectsPage = () => {
                   <span className="text-muted-foreground">{project.teamMembers} أعضاء</span>
                 </div>
               </div>
-
+              
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  المهام: {project.completedTasks}/{project.tasks}
+                  المهام: {project.completedTasks ?? 0}/{Array.isArray(project.tasks) ? project.tasks.length : project.tasks ?? 0}
                 </span>
                 <span className="text-muted-foreground">
-                 {Number.isFinite(project.completedTasks) && Number.isFinite(project.tasks) && project.tasks > 0
-                  ? Math.round((project.completedTasks / project.tasks) * 100)
-                  : 0}% مكتمل
-
+                  {Array.isArray(project.tasks) && project.tasks.length > 0
+                    ? Math.round(((project.completedTasks ?? 0) / project.tasks.length) * 100)
+                    : 0}% مكتمل
                 </span>
               </div>
 
@@ -353,6 +352,7 @@ const ProjectsPage = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* نموذج الحقول كما في كودك الأصلي */}
             <div className="space-y-2">
               <Label htmlFor="name">اسم المشروع *</Label>
               <Input
@@ -370,7 +370,6 @@ const ProjectsPage = () => {
                 rows={3}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="status">حالة المشروع</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
@@ -471,4 +470,4 @@ const ProjectsPage = () => {
   );
 };
 
-export default ProjectsPage;
+export default Projects;

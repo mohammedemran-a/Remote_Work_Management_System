@@ -117,50 +117,6 @@ const Files = () => {
       shared: true
     },
     {
-      id: 4,
-      name: "كود المصدر النسخة 1.zip",
-      type: "archive",
-      size: "12.3 MB",
-      uploadDate: "2024-01-05",
-      uploadedBy: "محمد خالد",
-      project: "نظام إدارة المخزون",
-      downloads: 25,
-      shared: false
-    },
-    {
-      id: 5,
-      name: "لقطات شاشة التطبيق.png",
-      type: "image",
-      size: "800 KB",
-      uploadDate: "2024-01-11",
-      uploadedBy: "عمر حسن",
-      project: "تطبيق الهاتف المحمول",
-      downloads: 12,
-      shared: true
-    },
-    {
-      id: 6,
-      name: "فيديو توضيحي للمنتج.mp4",
-      type: "video",
-      size: "25.7 MB",
-      uploadDate: "2024-01-13",
-      uploadedBy: "ليلى محمود",
-      project: "حملة التسويق الرقمي",
-      downloads: 7,
-      shared: true
-    },
-    {
-      id: 7,
-      name: "قاعدة البيانات التصميمية.sql",
-      type: "database",
-      size: "3.1 MB",
-      uploadDate: "2024-01-09",
-      uploadedBy: "محمد خالد",
-      project: "نظام إدارة المخزون",
-      downloads: 5,
-      shared: false
-    },
-    {
       id: 8,
       name: "تقرير الأداء الشهري.xlsx",
       type: "spreadsheet",
