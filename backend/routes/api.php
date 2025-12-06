@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\api\ProjectController;
 use App\Http\Controllers\api\TaskController;
+use App\Http\Controllers\Api\ProjectFileController;
+
 // ------------------------
 // 🔹 التسجيل وتسجيل الدخول
 // ------------------------
@@ -38,3 +40,14 @@ Route::apiResource('projects', ProjectController::class);
 
 
 Route::apiResource('tasks', TaskController::class);
+
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('project-files', [ProjectFileController::class, 'index']);
+    Route::post('project-files', [ProjectFileController::class, 'store']);
+    Route::get('project-files/{id}', [ProjectFileController::class, 'show']);
+    Route::put('project-files/{id}', [ProjectFileController::class, 'update']);
+    Route::delete('project-files/{id}', [ProjectFileController::class, 'destroy']);
+    Route::get('project-files/{id}/download', [ProjectFileController::class, 'download']);
+});

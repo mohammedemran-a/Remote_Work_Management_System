@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Card,
   CardContent,
@@ -123,7 +124,8 @@ const FilesUI = ({
 }: Props) => {
   return (
     <>
-      {/* Header */}
+      {/* نفس التصميم السابق مع استخدام البيانات الحقيقية */}
+       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold text-foreground">الملفات</h1>
@@ -229,6 +231,7 @@ const FilesUI = ({
           <p className="mt-2 text-muted-foreground">لم يتم العثور على ملفات تطابق معايير البحث</p>
         </div>
       )}
+      {/* ... الكود كامل كما قدمته سابقاً بدون تعديل ... */}
     </>
   );
 };
