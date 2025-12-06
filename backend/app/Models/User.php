@@ -42,4 +42,8 @@ class User extends Authenticatable
     public function tasks() {
         return $this->hasMany(Task::class, 'assigned_to');
     }
+
+    public function uploadedFiles() {
+       return $this->hasMany(ProjectFile::class, 'uploaded_by');
+    }
 }
