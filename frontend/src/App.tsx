@@ -10,7 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetails from "./pages/ProjectDetails";
 import Tasks from "./pages/Tasks";
-import Calendar from "./pages/Calendar";
+import Calendar from "./pages/Calendar/index";
 import Files from "./pages/Files";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
