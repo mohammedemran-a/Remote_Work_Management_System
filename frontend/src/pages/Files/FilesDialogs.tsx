@@ -1,3 +1,5 @@
+// src/pages/Files/FilesDialogs.tsx
+
 import {
   Dialog,
   DialogContent,
@@ -16,35 +18,66 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
-import { FileItem } from "./useFilesState";
+
+import { ProjectFile } from "@/api/projectFiles";
+import { useEffect, useState } from "react";
+import { getProjects } from "@/api/project";
+
+// =============
+/// Types
+// =============
+interface Project {
+  id: number;
+  name: string;
+}
 
 interface Props {
   isDialogOpen: boolean;
   setIsDialogOpen: (v: boolean) => void;
+
   isDeleteDialogOpen: boolean;
   setIsDeleteDialogOpen: (v: boolean) => void;
-  selectedFile: FileItem | null;
+
+  selectedFile: ProjectFile | null;
+
   formData: {
     name: string;
     type: string;
-    project: string;
+    project_id: number;
     shared: boolean;
   };
-  setFormData: (data: unknown) => void;
+
+  setFormData: (
+    data: Partial<{
+      name: string;
+      type: string;
+      project_id: number;
+      shared: boolean;
+    }>
+  ) => void;
+
+  uploadedFile: File | null;
+  setUploadedFile: (file: File | null) => void;
+
   handleSaveFile: () => void;
   confirmDelete: () => void;
 }
 
+// =============================
+//  COMPONENT
+// =============================
 const FilesDialogs = ({
   isDialogOpen,
   setIsDialogOpen,
@@ -53,37 +86,77 @@ const FilesDialogs = ({
   selectedFile,
   formData,
   setFormData,
+  uploadedFile,
+  setUploadedFile,
   handleSaveFile,
   confirmDelete,
 }: Props) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  // ================
+  // Fetch Projects
+  // ================
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await getProjects();
+        setProjects(res.data);
+      } catch (error) {
+        console.error("Failed to fetch projects", error);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   return (
     <>
+      {/* ========== MAIN DIALOG ========= */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle>{selectedFile ? "تعديل بيانات الملف" : "رفع ملف جديد"}</DialogTitle>
+            <DialogTitle>
+              {selectedFile ? "تعديل بيانات الملف" : "رفع ملف جديد"}
+            </DialogTitle>
             <DialogDescription>
-              {selectedFile ? "قم بتعديل معلومات الملف" : "قم بإدخال معلومات الملف الجديد"}
+              {selectedFile
+                ? "قم بتعديل معلومات الملف"
+                : "قم بإدخال معلومات الملف الجديد"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* === Upload File === */}
             {!selectedFile && (
               <div className="space-y-2">
                 <Label>الملف *</Label>
-                <Input type="file" />
+                <Input
+                  type="file"
+                  onChange={(e) =>
+                    e.target.files && setUploadedFile(e.target.files[0])
+                  }
+                />
               </div>
             )}
 
+            {/* === File Name === */}
             <div className="space-y-2">
               <Label>اسم الملف *</Label>
-              <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ name: e.target.value })}
+              />
             </div>
 
+            {/* === File Type === */}
             <div className="space-y-2">
               <Label>نوع الملف</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => setFormData({ type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر نوع الملف" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="document">مستند</SelectItem>
                   <SelectItem value="image">صورة</SelectItem>
@@ -97,33 +170,69 @@ const FilesDialogs = ({
               </Select>
             </div>
 
+            {/* === Project === */}
             <div className="space-y-2">
               <Label>المشروع *</Label>
-              <Input value={formData.project} onChange={(e) => setFormData({ ...formData, project: e.target.value })} />
+              <Select
+                value={formData.project_id.toString()}
+                onValueChange={(value) =>
+                  setFormData({ project_id: Number(value) })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المشروع" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* === Shared === */}
             <div className="flex items-center gap-2">
-              <input type="checkbox" checked={formData.shared} onChange={(e) => setFormData({ ...formData, shared: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={formData.shared}
+                onChange={(e) =>
+                  setFormData({ shared: e.target.checked })
+                }
+              />
               <Label>مشاركة الملف مع الفريق</Label>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
-            <Button onClick={handleSaveFile}>{selectedFile ? "حفظ التعديلات" : "رفع الملف"}</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveFile}>
+              {selectedFile ? "حفظ التعديلات" : "رفع الملف"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* ========== DELETE DIALOG ========= */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف الملف نهائياً ولا يمكن التراجع.</AlertDialogDescription>
+            <AlertDialogDescription>
+              سيتم حذف الملف نهائياً ولا يمكن التراجع.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>حذف</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete}>
+              حذف
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

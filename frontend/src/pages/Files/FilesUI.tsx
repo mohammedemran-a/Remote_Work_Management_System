@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileItem } from "./useFilesState";
+import { ProjectFile } from "@/api/projectFiles";
 
 interface Props {
   searchTerm: string;
@@ -44,20 +44,27 @@ interface Props {
   setViewMode: (v: string) => void;
   filterType: string;
   setFilterType: (v: string) => void;
-  files: FileItem[];
-  filteredFiles: FileItem[];
+  files: ProjectFile[];
+  filteredFiles: ProjectFile[];
   totalSize: number;
-  handleOpenDialog: (file?: FileItem) => void;
+  loading: boolean;
+  handleOpenDialog: (file?: ProjectFile) => void;
   handleDeleteFile: (id: number) => void;
+  downloadFile: (id: number, name: string) => void;
 }
 
 const getFileIcon = (type: string) => {
   switch (type) {
-    case "document":
+    case "pdf":
+    case "doc":
+    case "docx":
     case "presentation":
       return <FileText className="h-8 w-8 text-blue-600" />;
+    case "jpg":
+    case "png":
     case "image":
       return <FileImage className="h-8 w-8 text-green-600" />;
+    case "mp4":
     case "video":
       return <FileVideo className="h-8 w-8 text-purple-600" />;
     default:
@@ -67,20 +74,17 @@ const getFileIcon = (type: string) => {
 
 const getFileTypeColor = (type: string) => {
   switch (type) {
-    case "document":
+    case "pdf":
+    case "doc":
+    case "docx":
       return "bg-blue-100 text-blue-800";
-    case "image":
+    case "jpg":
+    case "png":
       return "bg-green-100 text-green-800";
-    case "video":
+    case "mp4":
       return "bg-purple-100 text-purple-800";
-    case "design":
-      return "bg-pink-100 text-pink-800";
-    case "archive":
+    case "zip":
       return "bg-orange-100 text-orange-800";
-    case "database":
-      return "bg-red-100 text-red-800";
-    case "spreadsheet":
-      return "bg-teal-100 text-teal-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -88,25 +92,26 @@ const getFileTypeColor = (type: string) => {
 
 const getFileTypeLabel = (type: string) => {
   switch (type) {
-    case "document":
+    case "pdf":
+      return "PDF";
+    case "doc":
+    case "docx":
       return "مستند";
-    case "image":
+    case "jpg":
+    case "png":
       return "صورة";
-    case "video":
+    case "mp4":
       return "فيديو";
-    case "design":
-      return "تصميم";
-    case "archive":
+    case "zip":
       return "أرشيف";
-    case "database":
-      return "قاعدة بيانات";
-    case "spreadsheet":
-      return "جدول بيانات";
-    case "presentation":
-      return "عرض تقديمي";
     default:
-      return "ملف";
+      return type.toUpperCase();
   }
+};
+
+const formatSize = (size: number) => {
+  if (!size) return "0 MB";
+  return `${(size / 1024 / 1024).toFixed(2)} MB`;
 };
 
 const FilesUI = ({
@@ -119,26 +124,40 @@ const FilesUI = ({
   files,
   filteredFiles,
   totalSize,
+  loading,
   handleOpenDialog,
   handleDeleteFile,
+  downloadFile,
 }: Props) => {
   return (
     <>
-      {/* نفس التصميم السابق مع استخدام البيانات الحقيقية */}
-       {/* Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold text-foreground">الملفات</h1>
-          <p className="text-lg text-muted-foreground">إدارة ومشاركة ملفات المشاريع</p>
+          <p className="text-lg text-muted-foreground">
+            إدارة ومشاركة ملفات المشاريع
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant={viewMode === "grid" ? "default" : "outline"} size="sm" onClick={() => setViewMode("grid")}>
+          <Button
+            variant={viewMode === "grid" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+          >
             <Grid className="h-4 w-4" />
           </Button>
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" onClick={() => setViewMode("list")}>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
             <List className="h-4 w-4" />
           </Button>
-          <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
+          <Button
+            className="flex items-center gap-2"
+            onClick={() => handleOpenDialog()}
+          >
             <Upload className="h-4 w-4" />
             رفع ملف
           </Button>
@@ -147,10 +166,34 @@ const FilesUI = ({
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{files.length}</p><p className="text-sm text-muted-foreground">إجمالي الملفات</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{totalSize.toFixed(1)} MB</p><p className="text-sm text-muted-foreground">المساحة المستخدمة</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{files.filter(f => f.shared).length}</p><p className="text-sm text-muted-foreground">ملفات مشتركة</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{files.reduce((sum, f) => sum + f.downloads, 0)}</p><p className="text-sm text-muted-foreground">إجمالي التحميلات</p></CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{files.length}</p>
+            <p className="text-sm text-muted-foreground">إجمالي الملفات</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{totalSize.toFixed(1)} MB</p>
+            <p className="text-sm text-muted-foreground">المساحة المستخدمة</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">
+              {files.filter((f) => f.shared).length}
+            </p>
+            <p className="text-sm text-muted-foreground">ملفات مشتركة</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">
+              {files.reduce((sum, f) => sum + f.downloads, 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">إجمالي التحميلات</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -164,21 +207,30 @@ const FilesUI = ({
             className="pr-10 text-right"
           />
         </div>
+
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="نوع الملف" /></SelectTrigger>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="نوع الملف" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">جميع الأنواع</SelectItem>
-            <SelectItem value="document">مستندات</SelectItem>
-            <SelectItem value="image">صور</SelectItem>
-            <SelectItem value="video">فيديو</SelectItem>
-            <SelectItem value="design">تصميم</SelectItem>
-            <SelectItem value="archive">أرشيف</SelectItem>
+            <SelectItem value="pdf">PDF</SelectItem>
+            <SelectItem value="docx">مستندات</SelectItem>
+            <SelectItem value="jpg">صور</SelectItem>
+            <SelectItem value="mp4">فيديو</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
+      {/* Loading */}
+      {loading && (
+        <div className="text-center py-10 text-muted-foreground">
+          جاري تحميل الملفات...
+        </div>
+      )}
+
       {/* Files View */}
-      {viewMode === "grid" ? (
+      {!loading && viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredFiles.map((file) => (
             <Card key={file.id}>
@@ -187,51 +239,84 @@ const FilesUI = ({
                   <div className="flex gap-3">
                     {getFileIcon(file.type)}
                     <div>
-                      <h4 className="font-medium text-sm truncate">{file.name}</h4>
-                      <p className="text-xs text-muted-foreground">{file.size}</p>
+                      <h4 className="font-medium text-sm truncate">
+                        {file.name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {formatSize(file.size)}
+                      </p>
                     </div>
                   </div>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem><Download className="ml-2 h-4 w-4" />تحميل</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenDialog(file)}>تعديل البيانات</DropdownMenuItem>
-                      <DropdownMenuItem><Share className="ml-2 h-4 w-4" />مشاركة</DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteFile(file.id)}>حذف</DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => downloadFile(file.id, file.name)}
+                      >
+                        <Download className="ml-2 h-4 w-4" />
+                        تحميل
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleOpenDialog(file)}
+                      >
+                        تعديل البيانات
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Share className="ml-2 h-4 w-4" />
+                        مشاركة
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={() => handleDeleteFile(file.id)}
+                      >
+                        حذف
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
                 <div className="flex gap-2">
-                  <Badge className={getFileTypeColor(file.type)}>{getFileTypeLabel(file.type)}</Badge>
+                  <Badge className={getFileTypeColor(file.type)}>
+                    {getFileTypeLabel(file.type)}
+                  </Badge>
                   {file.shared && <Badge variant="secondary">مشترك</Badge>}
                 </div>
 
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <div className="flex items-center gap-1"><User className="h-3 w-3" />{file.uploadedBy}</div>
-                  <div className="flex items-center gap-1"><Calendar className="h-3 w-3" />{file.uploadDate}</div>
-                  <div className="flex items-center gap-1"><Download className="h-3 w-3" />{file.downloads}</div>
+                  <div className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {file.uploader?.name || "غير معروف"}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(file.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Download className="h-3 w-3" />
+                    {file.downloads}
+                  </div>
                 </div>
-
-                <p className="text-xs text-muted-foreground truncate">{file.project}</p>
               </CardContent>
             </Card>
           ))}
         </div>
-      ) : (
-        <Card><CardContent>/* نفس جدول القائمة كما في ملفك الأصلي */</CardContent></Card>
-      )}
+      ) : null}
 
-      {filteredFiles.length === 0 && (
+      {/* Empty State */}
+      {!loading && filteredFiles.length === 0 && (
         <div className="text-center py-12">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">لا توجد ملفات</h3>
-          <p className="mt-2 text-muted-foreground">لم يتم العثور على ملفات تطابق معايير البحث</p>
+          <p className="mt-2 text-muted-foreground">
+            لم يتم العثور على ملفات تطابق البحث
+          </p>
         </div>
       )}
-      {/* ... الكود كامل كما قدمته سابقاً بدون تعديل ... */}
     </>
   );
 };

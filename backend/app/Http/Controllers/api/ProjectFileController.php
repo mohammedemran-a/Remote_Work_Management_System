@@ -40,7 +40,9 @@ class ProjectFileController extends Controller
         }
 
         $file = $request->file('file');
-        $path = $file->store('project_files'); // سيتم حفظه في storage/app/project_files
+
+        // حفظ الملف داخل storage/app/public/project_files
+        $path = $file->store('project_files', 'public');
 
         $projectFile = ProjectFile::create([
             'name' => $file->getClientOriginalName(),
@@ -65,7 +67,7 @@ class ProjectFileController extends Controller
     }
 
     /**
-     * تحديث ملف (مثل مشاركة الملف)
+     * تحديث ملف (مثل مشاركة الملف أو تغيير الاسم)
      */
     public function update(Request $request, $id)
     {
@@ -92,9 +94,9 @@ class ProjectFileController extends Controller
     {
         $file = ProjectFile::findOrFail($id);
 
-        // حذف الملف من التخزين أولاً
-        if (Storage::exists($file->path)) {
-            Storage::delete($file->path);
+        // حذف الملف من التخزين إذا كان موجوداً
+        if (Storage::disk('public')->exists($file->path)) {
+            Storage::disk('public')->delete($file->path);
         }
 
         $file->delete();
@@ -109,13 +111,13 @@ class ProjectFileController extends Controller
     {
         $file = ProjectFile::findOrFail($id);
 
-        if (!Storage::exists($file->path)) {
+        if (!Storage::disk('public')->exists($file->path)) {
             return response()->json(['message' => 'File not found'], 404);
         }
 
         // زيادة عدد التحميلات
         $file->increment('downloads');
 
-        return Storage::download($file->path, $file->name);
+        return Storage::disk('public')->download($file->path, $file->name);
     }
 }
