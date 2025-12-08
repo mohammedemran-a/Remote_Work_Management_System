@@ -6,7 +6,7 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\api\ProjectController;
 use App\Http\Controllers\api\TaskController;
 use App\Http\Controllers\Api\ProjectFileController;
-
+use App\Http\Controllers\RolePermissionController;
 // ------------------------
 // 🔹 التسجيل وتسجيل الدخول
 // ------------------------
@@ -52,3 +52,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/project-files/{id}', [ProjectFileController::class, 'destroy']);
     Route::get('/project-files/download/{id}', [ProjectFileController::class, 'download']);
 });
+
+
+Route::get('/roles', [RolePermissionController::class, 'index']);
+    Route::get('/permissions', [RolePermissionController::class, 'permissions']);
+    Route::post('/roles', [RolePermissionController::class, 'store']);
+    Route::put('/roles/{id}', [RolePermissionController::class, 'update']);
+    Route::delete('/roles/{id}', [RolePermissionController::class, 'destroy']);
+
