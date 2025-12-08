@@ -1,11 +1,18 @@
 import { create } from "zustand";
 import { AxiosError } from "axios";
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from "@/api/auth";
+import {
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  getCurrentUser,
+} from "@/api/auth";
 
 interface User {
   id: number;
   name: string;
   email: string;
+  roles: string[];
+  permissions: string[];
 }
 
 interface AuthState {
@@ -18,11 +25,14 @@ interface AuthState {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
+
+  hasPermission: (permission: string) => boolean;
+  hasRole: (role: string) => boolean;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: localStorage.getItem("token") || null,
+  token: localStorage.getItem("token"),
   loading: false,
   error: null,
 
@@ -30,10 +40,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       const data = await apiLogin(email, password);
-      set({ user: data.user, token: data.token, loading: false });
+      set({
+        user: data.user,
+        token: data.token,
+        loading: false,
+      });
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
-      set({ error: error.response?.data?.message || "خطأ في تسجيل الدخول", loading: false });
+      set({
+        error: error.response?.data?.message || "خطأ في تسجيل الدخول",
+        loading: false,
+      });
       throw error;
     }
   },
@@ -42,10 +59,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       const data = await apiRegister(name, email, password);
-      set({ user: data.user, token: data.token, loading: false });
+      set({
+        user: data.user,
+        token: data.token,
+        loading: false,
+      });
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
-      set({ error: error.response?.data?.message || "خطأ في التسجيل", loading: false });
+      set({
+        error: error.response?.data?.message || "خطأ في التسجيل",
+        loading: false,
+      });
       throw error;
     }
   },
@@ -54,10 +78,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       await apiLogout();
+      localStorage.removeItem("token");
       set({ user: null, token: null, loading: false });
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
-      set({ error: error.response?.data?.message || "خطأ في تسجيل الخروج", loading: false });
+      set({
+        error: error.response?.data?.message || "خطأ في تسجيل الخروج",
+        loading: false,
+      });
       throw error;
     }
   },
@@ -65,11 +93,34 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchUser: async () => {
     set({ loading: true, error: null });
     try {
-      const user = await getCurrentUser();
-      set({ user, loading: false });
+      const res = await getCurrentUser();
+      set({
+        user: res.user,
+        token: localStorage.getItem("token"),
+        loading: false,
+      });
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
-      set({ user: null, token: null, loading: false, error: error.response?.data?.message || "خطأ في جلب البيانات" });
+      set({
+        user: null,
+        token: null,
+        loading: false,
+        error: error.response?.data?.message || "انتهت الجلسة",
+      });
     }
+  },
+
+  // ✅ التابع المهم جدًا:
+  hasPermission: (permission: string) => {
+    const user = get().user;
+    if (!user) return false;
+    if (user.roles.includes("admin")) return true;
+    return user.permissions.includes(permission);
+  },
+
+  hasRole: (role: string) => {
+    const user = get().user;
+    if (!user) return false;
+    return user.roles.includes(role);
   },
 }));

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserPlus, Users as UsersIcon, Edit, Trash2, Search, MoreVertical } from "lucide-react";
+import { UserPlus, Edit, Trash2, Search, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,44 +35,67 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { fetchUsers, createUser, updateUser, deleteUser, User } from "@/api/users";
+import { fetchUsers, createUser, updateUser, deleteUser, User as ApiUser } from "@/api/users";
+
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  role: "user" | "manager" | "admin";
+}
+
+// توسيع نوع ApiUser لإضافة خاصية role
+interface ExtendedUser extends ApiUser {
+  role?: "user" | "manager" | "admin";
+}
 
 const UsersPage = () => {
   const { toast } = useToast();
 
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<ExtendedUser[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ExtendedUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    password: "",
+    role: "user",
+  });
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const data = await fetchUsers();
-      setUsers(data);
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل جلب المستخدمين", variant: "destructive" });
+      setUsers(data as ExtendedUser[]);
+    } catch (error: unknown) {
+      const err = error as { message: string };
+      toast({ title: "خطأ", description: err.message || "فشل جلب المستخدمين", variant: "destructive" });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleOpenDialog = (user?: User) => {
+  const handleOpenDialog = (user?: ExtendedUser) => {
     if (user) {
       setSelectedUser(user);
-      setFormData({ name: user.name, email: user.email, password: "" });
+      setFormData({
+        name: user.name,
+        email: user.email,
+        password: "",
+        role: user.role ?? "user",
+      });
     } else {
       setSelectedUser(null);
-      setFormData({ name: "", email: "", password: "" });
+      setFormData({ name: "", email: "", password: "", role: "user" });
     }
     setIsDialogOpen(true);
   };
@@ -88,13 +111,14 @@ const UsersPage = () => {
         await updateUser(selectedUser.id, formData);
         toast({ title: "تم التحديث", description: "تم تعديل المستخدم بنجاح" });
       } else {
-        await createUser(formData.name, formData.email, formData.password);
+        await createUser(formData.name, formData.email, formData.password, formData.role);
         toast({ title: "تم الإضافة", description: "تم إنشاء مستخدم جديد بنجاح" });
       }
       setIsDialogOpen(false);
       await loadUsers();
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل حفظ البيانات", variant: "destructive" });
+    } catch (error: unknown) {
+      const err = error as { message: string };
+      toast({ title: "خطأ", description: err.message || "فشل حفظ البيانات", variant: "destructive" });
     }
   };
 
@@ -109,8 +133,9 @@ const UsersPage = () => {
       await deleteUser(userToDelete);
       toast({ title: "تم الحذف", description: "تم حذف المستخدم بنجاح" });
       await loadUsers();
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل حذف المستخدم", variant: "destructive" });
+    } catch (error: unknown) {
+      const err = error as { message: string };
+      toast({ title: "خطأ", description: err.message || "فشل حذف المستخدم", variant: "destructive" });
     } finally {
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -151,6 +176,7 @@ const UsersPage = () => {
               <TableRow>
                 <TableHead className="text-right">المستخدم</TableHead>
                 <TableHead className="text-right">البريد الإلكتروني</TableHead>
+                <TableHead className="text-right">الدور</TableHead>
                 <TableHead className="text-right">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
@@ -166,6 +192,7 @@ const UsersPage = () => {
                     </div>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.role ?? "user"}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -215,6 +242,15 @@ const UsersPage = () => {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
             )}
+            <select
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as FormData["role"] })}
+              className="w-full p-2 border rounded"
+            >
+              <option value="user">User</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
