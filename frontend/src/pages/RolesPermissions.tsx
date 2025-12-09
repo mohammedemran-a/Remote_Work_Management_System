@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -23,87 +22,145 @@ import {
 } from "@/components/ui/dialog";
 import { Shield, Plus, Edit, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getRoles, getPermissions, createRole, deleteRole } from "@/api/roles";
+
+// استيراد ترجمات الصلاحيات
+import permissionsTranslation from "@/lang/permissions.json";
 
 interface Role {
   id: number;
   name: string;
-  description: string;
   usersCount: number;
   permissions: string[];
 }
 
+interface PermissionItem {
+  name: string;
+  label: string;
+  category: string;
+}
+
 const RolesPermissions = () => {
   const { toast } = useToast();
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
 
-  const roles: Role[] = [
-    {
-      id: 1,
-      name: "مدير عام",
-      description: "صلاحيات كاملة على النظام",
-      usersCount: 2,
-      permissions: ["all"],
-    },
-    {
-      id: 2,
-      name: "مشرف مشروع",
-      description: "إدارة المشاريع والمهام",
-      usersCount: 5,
-      permissions: ["projects", "tasks", "team"],
-    },
-    {
-      id: 3,
-      name: "عضو فريق",
-      description: "عرض وتحديث المهام المخصصة",
-      usersCount: 15,
-      permissions: ["tasks_view", "tasks_update"],
-    },
-  ];
-
-  const permissions = [
-    { id: "projects", label: "إدارة المشاريع", category: "المشاريع" },
-    { id: "projects_create", label: "إنشاء مشاريع", category: "المشاريع" },
-    { id: "projects_edit", label: "تعديل مشاريع", category: "المشاريع" },
-    { id: "projects_delete", label: "حذف مشاريع", category: "المشاريع" },
-    { id: "tasks", label: "إدارة المهام", category: "المهام" },
-    { id: "tasks_view", label: "عرض المهام", category: "المهام" },
-    { id: "tasks_create", label: "إنشاء مهام", category: "المهام" },
-    { id: "tasks_update", label: "تحديث المهام", category: "المهام" },
-    { id: "tasks_delete", label: "حذف المهام", category: "المهام" },
-    { id: "team", label: "إدارة الفريق", category: "الفريق" },
-    { id: "team_invite", label: "دعوة أعضاء", category: "الفريق" },
-    { id: "team_remove", label: "إزالة أعضاء", category: "الفريق" },
-    { id: "files", label: "إدارة الملفات", category: "الملفات" },
-    { id: "files_upload", label: "رفع ملفات", category: "الملفات" },
-    { id: "files_delete", label: "حذف ملفات", category: "الملفات" },
-    { id: "reports", label: "عرض التقارير", category: "التقارير" },
-    { id: "reports_export", label: "تصدير التقارير", category: "التقارير" },
-    { id: "settings", label: "إدارة الإعدادات", category: "الإعدادات" },
-  ];
-
-  const handleDeleteRole = (roleId: number) => {
-    toast({
-      title: "تم الحذف",
-      description: "تم حذف الدور بنجاح",
-    });
+  // 🔹 دالة لتصنيف الصلاحيات حسب القسم
+  const getCategoryFromPermission = (perm: string): string => {
+    if (perm.startsWith("dashboard")) return "لوحة التحكم";
+    if (perm.startsWith("users")) return "المستخدمين";
+    if (perm.startsWith("roles")) return "الأدوار والصلاحيات";
+    if (perm.startsWith("notifications")) return "الإشعارات";
+    if (perm.startsWith("projects")) return "المشاريع";
+    if (perm.startsWith("tasks")) return "المهام";
+    if (perm.startsWith("team")) return "الفريق";
+    if (perm.startsWith("files")) return "الملفات";
+    if (perm.startsWith("reports")) return "التقارير";
+    if (perm.startsWith("settings")) return "الإعدادات";
+    return "عام";
   };
 
-  const handleSaveRole = () => {
-    setIsDialogOpen(false);
-    toast({
-      title: "تم الحفظ",
-      description: "تم حفظ الدور وصلاحياته بنجاح",
-    });
+  // 🔹 جلب الأدوار
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await getRoles();
+      setRoles(res.data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "فشل جلب الأدوار";
+      toast({ title: "خطأ", description: message });
+    }
+  }, [toast]);
+
+  // 🔹 جلب الصلاحيات
+  const fetchPermissions = useCallback(async () => {
+    try {
+      const res = await getPermissions();
+      const mapped: PermissionItem[] = res.data.map((p: string) => ({
+        name: p,
+        label: permissionsTranslation[p] || p, // استخدام الترجمة من الملف
+        category: getCategoryFromPermission(p),
+      }));
+      setPermissions(mapped);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "فشل جلب الصلاحيات";
+      toast({ title: "خطأ", description: message });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRoles();
+    fetchPermissions();
+  }, [fetchRoles, fetchPermissions]);
+
+  // 🔹 حذف دور
+  const handleDeleteRole = async (roleId: number) => {
+    try {
+      await deleteRole(roleId);
+      toast({ title: "تم الحذف", description: "تم حذف الدور بنجاح" });
+      fetchRoles();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "فشل حذف الدور أو الدور مرتبط بمستخدمين";
+      toast({ title: "خطأ", description: message });
+    }
   };
+
+  // 🔹 حفظ دور جديد
+  const handleSaveRole = async () => {
+    if (!newRoleName || newRolePermissions.length === 0) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال اسم الدور واختيار الصلاحيات",
+      });
+      return;
+    }
+    try {
+      await createRole({ name: newRoleName, permissions: newRolePermissions });
+      toast({ title: "تم الحفظ", description: "تم حفظ الدور وصلاحياته بنجاح" });
+      setIsDialogOpen(false);
+      setNewRoleName("");
+      setNewRolePermissions([]);
+      fetchRoles();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "فشل حفظ الدور أو صلاحيات غير موجودة";
+      toast({ title: "خطأ", description: message });
+    }
+  };
+
+  const togglePermission = (perm: string) => {
+    setNewRolePermissions((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
+  };
+
+  // 🔹 الأقسام الجديدة مع السابقة
+  const roleCategories = [
+    "لوحة التحكم",
+    "المستخدمين",
+    "الأدوار والصلاحيات",
+    "الإشعارات",
+    "المشاريع",
+    "المهام",
+    "الفريق",
+    "الملفات",
+    "التقارير",
+    "الإعدادات",
+  ];
 
   return (
     <div className="space-y-6" dir="rtl">
+      {/* زر إضافة دور جديد */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">الأدوار والصلاحيات</h1>
-          <p className="text-muted-foreground mt-2">
-            إدارة أدوار المستخدمين وتحديد الصلاحيات
-          </p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -113,59 +170,56 @@ const RolesPermissions = () => {
               إضافة دور جديد
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" dir="rtl">
             <DialogHeader>
               <DialogTitle>إضافة دور جديد</DialogTitle>
-              <DialogDescription>
-                قم بإنشاء دور جديد وتحديد الصلاحيات المناسبة له
-              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 py-4">
               <div className="space-y-2">
                 <Label htmlFor="role-name">اسم الدور</Label>
-                <Input id="role-name" placeholder="مثال: محرر المحتوى" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role-description">الوصف</Label>
                 <Input
-                  id="role-description"
-                  placeholder="وصف مختصر للدور وصلاحياته"
+                  id="role-name"
+                  placeholder="مثال: محرر المحتوى"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-4">
                 <Label>الصلاحيات</Label>
-                {["المشاريع", "المهام", "الفريق", "الملفات", "التقارير", "الإعدادات"].map(
-                  (category) => (
-                    <Card key={category}>
-                      <CardHeader>
-                        <CardTitle className="text-base">{category}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {permissions
-                            .filter((p) => p.category === category)
-                            .map((permission) => (
-                              <div
-                                key={permission.id}
-                                className="flex items-center space-x-2 space-x-reverse"
+                {roleCategories.map((category) => (
+                  <Card key={category}>
+                    <CardHeader>
+                      <CardTitle className="text-base">{category}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {permissions
+                          .filter((p) => p.category === category)
+                          .map((permission) => (
+                            <div
+                              key={permission.name}
+                              className="flex items-center space-x-2 space-x-reverse"
+                            >
+                              <Checkbox
+                                id={permission.name}
+                                checked={newRolePermissions.includes(permission.name)}
+                                onCheckedChange={() => togglePermission(permission.name)}
+                              />
+                              <label
+                                htmlFor={permission.name}
+                                className="text-sm font-medium leading-none cursor-pointer"
                               >
-                                <Checkbox id={permission.id} />
-                                <label
-                                  htmlFor={permission.id}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                >
-                                  {permission.label}
-                                </label>
-                              </div>
-                            ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                )}
+                                {permission.label}
+                              </label>
+                            </div>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
 
@@ -179,22 +233,20 @@ const RolesPermissions = () => {
         </Dialog>
       </div>
 
+      {/* الأدوار */}
       <Card>
         <CardHeader>
           <CardTitle>
             <Shield className="inline-block ml-2 h-5 w-5" />
             الأدوار المتاحة
           </CardTitle>
-          <CardDescription>
-            قائمة بجميع الأدوار وعدد المستخدمين في كل دور
-          </CardDescription>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="text-right">اسم الدور</TableHead>
-                <TableHead className="text-right">الوصف</TableHead>
                 <TableHead className="text-right">
                   <Users className="inline-block ml-2 h-4 w-4" />
                   المستخدمين
@@ -202,13 +254,11 @@ const RolesPermissions = () => {
                 <TableHead className="text-right">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {roles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell className="font-medium">{role.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {role.description}
-                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                       {role.usersCount}
@@ -235,13 +285,12 @@ const RolesPermissions = () => {
         </CardContent>
       </Card>
 
+      {/* جدول الصلاحيات */}
       <Card>
         <CardHeader>
           <CardTitle>جدول الصلاحيات</CardTitle>
-          <CardDescription>
-            عرض تفصيلي لصلاحيات كل دور
-          </CardDescription>
         </CardHeader>
+
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -255,16 +304,15 @@ const RolesPermissions = () => {
                   ))}
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {permissions.slice(0, 10).map((permission) => (
-                  <TableRow key={permission.id}>
-                    <TableCell className="font-medium">
-                      {permission.label}
-                    </TableCell>
+                {permissions.map((permission) => (
+                  <TableRow key={permission.name}>
+                    <TableCell className="font-medium">{permission.label}</TableCell>
                     {roles.map((role) => (
                       <TableCell key={role.id} className="text-center">
                         {role.permissions.includes("all") ||
-                        role.permissions.includes(permission.id) ? (
+                        role.permissions.includes(permission.name) ? (
                           <span className="text-green-500">✓</span>
                         ) : (
                           <span className="text-muted-foreground">-</span>

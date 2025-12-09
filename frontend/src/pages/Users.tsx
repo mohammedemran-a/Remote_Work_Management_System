@@ -3,7 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserPlus, Edit, Trash2, Search, MoreVertical } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import {
+  UserPlus,
+  Edit,
+  Trash2,
+  Search,
+  MoreVertical,
+  Users,
+  Shield,
+  UserCheck,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -24,7 +35,8 @@ import {
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogFooter
+  AlertDialogDescription,
+  AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import {
   Table,
@@ -35,54 +47,95 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { fetchUsers, createUser, updateUser, deleteUser, User as ApiUser } from "@/api/users";
+import {
+  fetchUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  User as ApiUser,
+} from "@/api/users";
+import { getRoles } from "@/api/roles";
+
+/* ================= TYPES ================= */
 
 interface FormData {
   name: string;
   email: string;
   password: string;
-  role: "user" | "manager" | "admin";
+  role: string;
 }
 
-// توسيع نوع ApiUser لإضافة خاصية role
 interface ExtendedUser extends ApiUser {
-  role?: "user" | "manager" | "admin";
+  role?: string;
 }
+
+/* ================= COMPONENT ================= */
 
 const UsersPage = () => {
   const { toast } = useToast();
 
   const [users, setUsers] = useState<ExtendedUser[]>([]);
+  const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ExtendedUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
     password: "",
-    role: "user",
+    role: "",
   });
+
+  /* ============== LOAD USERS ============== */
 
   const loadUsers = useCallback(async () => {
     try {
       const data = await fetchUsers();
-      setUsers(data as ExtendedUser[]);
+
+      const extendedUsers: ExtendedUser[] = data.map((user) => ({
+        ...user,
+        role: user.roles?.[0] || "",
+      }));
+
+      setUsers(extendedUsers);
     } catch (error: unknown) {
       const err = error as { message: string };
-      toast({ title: "خطأ", description: err.message || "فشل جلب المستخدمين", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: err.message || "فشل جلب المستخدمين",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  /* ============== LOAD ROLES ============== */
+
+  const loadRoles = useCallback(async () => {
+    try {
+      const res = await getRoles();
+      setRoles(res.data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "فشل جلب الأدوار";
+      toast({ title: "خطأ", description: message, variant: "destructive" });
     }
   }, [toast]);
 
   useEffect(() => {
     loadUsers();
-  }, [loadUsers]);
+    loadRoles();
+  }, [loadUsers, loadRoles]);
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  /* ============== FILTER ============== */
+
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  /* ============== DIALOG ============== */
 
   const handleOpenDialog = (user?: ExtendedUser) => {
     if (user) {
@@ -91,18 +144,30 @@ const UsersPage = () => {
         name: user.name,
         email: user.email,
         password: "",
-        role: user.role ?? "user",
+        role: user.role ?? "",
       });
     } else {
       setSelectedUser(null);
-      setFormData({ name: "", email: "", password: "", role: "user" });
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        role: roles[0]?.name || "",
+      });
     }
+
     setIsDialogOpen(true);
   };
 
+  /* ============== SAVE USER ============== */
+
   const handleSaveUser = async () => {
     if (!formData.name || !formData.email || (!selectedUser && !formData.password)) {
-      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: "يرجى ملء جميع الحقول المطلوبة",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -111,61 +176,111 @@ const UsersPage = () => {
         await updateUser(selectedUser.id, formData);
         toast({ title: "تم التحديث", description: "تم تعديل المستخدم بنجاح" });
       } else {
-        await createUser(formData.name, formData.email, formData.password, formData.role);
-        toast({ title: "تم الإضافة", description: "تم إنشاء مستخدم جديد بنجاح" });
+        await createUser(
+          formData.name,
+          formData.email,
+          formData.password,
+          formData.role
+        );
+        toast({ title: "تمت الإضافة", description: "تم إنشاء مستخدم جديد" });
       }
+
       setIsDialogOpen(false);
       await loadUsers();
     } catch (error: unknown) {
       const err = error as { message: string };
-      toast({ title: "خطأ", description: err.message || "فشل حفظ البيانات", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: err.message || "فشل حفظ البيانات",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDeleteUser = (userId: number) => {
-    setUserToDelete(userId);
-    setIsDeleteDialogOpen(true);
-  };
+  /* ============== DELETE ============== */
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
+
     try {
       await deleteUser(userToDelete);
       toast({ title: "تم الحذف", description: "تم حذف المستخدم بنجاح" });
       await loadUsers();
     } catch (error: unknown) {
       const err = error as { message: string };
-      toast({ title: "خطأ", description: err.message || "فشل حذف المستخدم", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: err.message || "فشل حذف المستخدم",
+        variant: "destructive",
+      });
     } finally {
-      setIsDeleteDialogOpen(false);
       setUserToDelete(null);
     }
   };
 
+  /* ================= UI ================= */
+
   return (
     <div className="space-y-8" dir="rtl">
+      {/* ===== HEADER ===== */}
       <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">إدارة المستخدمين</h1>
-          <p className="text-lg text-muted-foreground">إضافة وإدارة المستخدمين</p>
+        <div>
+          <h1 className="text-3xl font-bold">إدارة المستخدمين</h1>
+          <p className="text-muted-foreground">إضافة وتعديل المستخدمين</p>
         </div>
-        <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
-          <UserPlus className="h-4 w-4" /> إضافة مستخدم جديد
+        <Button onClick={() => handleOpenDialog()}>
+          <UserPlus className="ml-2 h-4 w-4" />
+          إضافة مستخدم
         </Button>
       </div>
 
-      <div className="flex gap-4 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="البحث في المستخدمين..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10 text-right"
-          />
-        </div>
+      {/* ===== STATS ===== */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">إجمالي المستخدمين</p>
+              <p className="text-2xl font-bold">{users.length}</p>
+            </div>
+            <Users className="h-8 w-8 text-primary" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">عدد الأدوار</p>
+              <p className="text-2xl font-bold">{roles.length}</p>
+            </div>
+            <Shield className="h-8 w-8 text-purple-600" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">عدد المشرفين</p>
+              <p className="text-2xl font-bold">
+                {users.filter((u) => u.role === "admin").length}
+              </p>
+            </div>
+            <UserCheck className="h-8 w-8 text-green-600" />
+          </CardContent>
+        </Card>
       </div>
 
+      {/* ===== SEARCH ===== */}
+      <div className="relative">
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4" />
+        <Input
+          placeholder="بحث..."
+          className="pr-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* ===== TABLE ===== */}
       <Card>
         <CardHeader>
           <CardTitle>قائمة المستخدمين</CardTitle>
@@ -174,38 +289,43 @@ const UsersPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-right">المستخدم</TableHead>
-                <TableHead className="text-right">البريد الإلكتروني</TableHead>
-                <TableHead className="text-right">الدور</TableHead>
-                <TableHead className="text-right">الإجراءات</TableHead>
+                <TableHead>المستخدم</TableHead>
+                <TableHead>البريد الإلكتروني</TableHead>
+                <TableHead>الدور</TableHead>
+                <TableHead className="text-center">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map(user => (
+              {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>{user.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                      </Avatar>
-                      {user.name}
-                    </div>
+                  <TableCell className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarFallback>
+                        {user.name.split(" ").map((n) => n[0]).join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    {user.name}
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role ?? "user"}</TableCell>
-                  <TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent>
                         <DropdownMenuItem onClick={() => handleOpenDialog(user)}>
-                          <Edit className="h-4 w-4 ml-2" /> تعديل
+                          <Edit className="ml-2 h-4 w-4" />
+                          تعديل
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-red-600">
-                          <Trash2 className="h-4 w-4 ml-2" /> حذف
+                        <DropdownMenuItem
+                          onClick={() => setUserToDelete(user.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="ml-2 h-4 w-4" />
+                          حذف
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -217,58 +337,93 @@ const UsersPage = () => {
         </CardContent>
       </Card>
 
+      {/* ===== DIALOG WITH ORIGINAL FORM STYLE ===== */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" dir="rtl">
+        <DialogContent dir="rtl">
           <DialogHeader>
-            <DialogTitle>{selectedUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
+            <DialogTitle>
+              {selectedUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUser ? "قم بتحديث البيانات" : "أدخل بيانات المستخدم الجديد"}
+            </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
-            <Input
-              placeholder="الاسم الكامل"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
-            <Input
-              placeholder="البريد الإلكتروني"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-            {!selectedUser && (
+            <div>
+              <Label>الاسم الكامل</Label>
               <Input
-                placeholder="كلمة المرور"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
+            </div>
+
+            <div>
+              <Label>البريد الإلكتروني</Label>
+              <Input
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+              />
+            </div>
+
+            {!selectedUser && (
+              <div>
+                <Label>كلمة المرور</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                />
+              </div>
             )}
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as FormData["role"] })}
-              className="w-full p-2 border rounded"
-            >
-              <option value="user">User</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
+
+            <div>
+              <Label>الدور الوظيفي</Label>
+              <select
+                className="w-full border p-2 rounded"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+              >
+                {roles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
-            <Button onClick={handleSaveUser}>{selectedUser ? "حفظ التعديلات" : "إضافة المستخدم"}</Button>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveUser}>
+              {selectedUser ? "حفظ التعديل" : "إضافة المستخدم"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* ===== DELETE ALERT ===== */}
+      <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف المستخدم نهائيًا.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              حذف
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete}>حذف</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

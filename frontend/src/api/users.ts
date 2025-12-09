@@ -17,7 +17,9 @@ interface ApiError {
 export const fetchUsers = async (): Promise<User[]> => {
   try {
     const response = await api.get("/users");
+    
     return response.data.users; // backend يعيد users داخل object
+    
   } catch (error: unknown) {
     const err = error as AxiosError<ApiError>;
     throw err.response?.data || { message: "خطأ في جلب المستخدمين" };
