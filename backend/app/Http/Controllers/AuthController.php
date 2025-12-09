@@ -4,56 +4,89 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
-    // تسجيل حساب جديد
+    // -----------------------------
+    // 🟢 تسجيل مستخدم جديد
+    // -----------------------------
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:8'
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
         ]);
 
         $user = User::create([
-            'name'  => $request->name,
+            'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
 
-        return response()->json(['message' => 'Account created successfully']);
+        // تعيين الدور الافتراضي
+        $user->assignRole('user');
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $user->load('roles', 'permissions');
+
+        return response()->json([
+            'message' => 'User registered successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
+            'token' => $token,
+        ], 201);
     }
 
-    // تسجيل الدخول
+    // -----------------------------
+    // 🟢 تسجيل الدخول
+    // -----------------------------
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => 'required|string',
         ]);
-
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
 
         $user = User::where('email', $request->email)->first();
 
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
+        $user->load('roles', 'permissions');
 
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
+            'token' => $token,
         ]);
     }
 
-    // تسجيل الخروج
+    // -----------------------------
+    // 🔴 تسجيل الخروج
+    // -----------------------------
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        $user = $request->user();
+        if ($user) {
+            $user->currentAccessToken()->delete();
+        }
 
         return response()->json(['message' => 'Logged out successfully']);
     }

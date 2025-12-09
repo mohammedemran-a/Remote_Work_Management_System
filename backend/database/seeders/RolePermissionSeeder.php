@@ -1,0 +1,63 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Hash;
+
+class RolePermissionSeeder extends Seeder
+{
+    public function run()
+    {
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $permissions = [
+            "dashboard_access",
+            "dashboard_view",
+            "users_view",
+            "users_create",
+            "users_edit",
+            "users_delete",
+            "roles_view",
+            "roles_create",
+            "roles_edit",
+            "roles_delete",
+            "notifications_view",
+            "notifications_delete",
+            "settings_view",
+            "settings_edit",
+        ];
+
+        // 🔹 إنشاء الصلاحيات
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission]);
+        }
+
+        // 🔹 إنشاء الأدوار
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $userRole  = Role::firstOrCreate(['name' => 'user']);
+
+        // 🔹 المدير يحصل على جميع الصلاحيات
+        $adminRole->givePermissionTo(Permission::all());
+
+        // 🔹 المستخدم بدون صلاحيات — يمكن تعديلها لاحقًا من لوحة التحكم
+        $userRole->syncPermissions([]);
+
+        // 🔹 إنشاء حساب المدير الأساسي
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('12345678'),
+            ]
+        );
+
+        $admin->assignRole('admin');
+
+        $this->command->info('Roles & permissions seeded. Admin has all permissions, user has none.');
+    }
+}
+

@@ -1,0 +1,16 @@
+{
+  "dashboard_access": "عرض الانتقال إلى لوحة التحكم",
+  "dashboard_view": "عرض الصفحة الرئيسية للوحة التحكم",
+  "users_view": "عرض المستخدمين",
+  "users_create": "إنشاء مستخدم",
+  "users_edit": "تعديل المستخدمين",
+  "users_delete": "حذف المستخدمين",
+  "roles_view": "عرض الأدوار",
+  "roles_create": "إنشاء دور جديد",
+  "roles_edit": "تعديل الدور",
+  "roles_delete": "حذف الدور",
+  "notifications_view": "عرض الإشعارات",
+  "notifications_delete": "حذف الإشعارات",
+  "settings_view": "عرض الإعدادات",
+  "settings_edit": "تعديل الإعدادات"
+}

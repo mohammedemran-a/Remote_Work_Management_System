@@ -8,8 +8,8 @@ interface UsersState {
   error: string | null;
 
   loadUsers: () => Promise<void>;
-  addUser: (name: string, email: string, password: string) => Promise<void>;
-  editUser: (id: number, data: Partial<User> & { password?: string }) => Promise<void>;
+  addUser: (name: string, email: string, password: string, role: string) => Promise<void>;
+  editUser: (id: number, data: Partial<User> & { password?: string; role?: string }) => Promise<void>;
   removeUser: (id: number) => Promise<void>;
 }
 
@@ -29,10 +29,10 @@ export const useUsersStore = create<UsersState>((set) => ({
     }
   },
 
-  addUser: async (name, email, password) => {
+  addUser: async (name, email, password, role) => {
     set({ loading: true, error: null });
     try {
-      const user = await createUser(name, email, password);
+      const user = await createUser(name, email, password, role);
       set((state) => ({ users: [...state.users, user], loading: false }));
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
@@ -46,7 +46,7 @@ export const useUsersStore = create<UsersState>((set) => ({
       const updatedUser = await updateUser(id, data);
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? updatedUser : u)),
-        loading: false
+        loading: false,
       }));
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
@@ -60,7 +60,7 @@ export const useUsersStore = create<UsersState>((set) => ({
       await deleteUser(id);
       set((state) => ({
         users: state.users.filter((u) => u.id !== id),
-        loading: false
+        loading: false,
       }));
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;

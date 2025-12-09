@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Mail, Phone, Lock, Upload, Save } from "lucide-react";
+import { User, Mail, Lock, Upload, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
@@ -135,33 +135,11 @@ const Profile = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    <Phone className="inline-block ml-2 h-4 w-4" />
-                    رقم الهاتف
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+966 5X XXX XXXX"
-                    defaultValue="+966 501234567"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="job-title">المسمى الوظيفي</Label>
                   <Input
                     id="job-title"
                     placeholder="أدخل المسمى الوظيفي"
                     defaultValue="مشرف تقني"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="department">القسم</Label>
-                  <Input
-                    id="department"
-                    placeholder="أدخل القسم"
-                    defaultValue="تقنية المعلومات"
                   />
                 </div>
 

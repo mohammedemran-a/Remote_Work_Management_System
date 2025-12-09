@@ -316,7 +316,7 @@ const Projects = () => {
                   <span className="text-muted-foreground">{project.teamMembers} أعضاء</span>
                 </div>
               </div>
-              
+
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
                   المهام: {project.completedTasks ?? 0}/{Array.isArray(project.tasks) ? project.tasks.length : project.tasks ?? 0}

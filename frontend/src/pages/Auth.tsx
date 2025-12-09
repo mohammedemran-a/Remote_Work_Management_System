@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { login, register } from "@/api/auth";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
-import { AxiosError } from "axios";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const loginStore = useAuthStore((state) => state.login);
+  const registerStore = useAuthStore((state) => state.register);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -42,14 +45,14 @@ const Auth = () => {
     }
 
     try {
-      await login(loginEmail, loginPassword);
+      await loginStore(loginEmail, loginPassword);
 
       toast({
         title: "تم تسجيل الدخول بنجاح",
         description: "مرحباً بك في نظام إدارة المشاريع",
       });
 
-      navigate("/"); // <<< الانتقال إلى الصفحة الرئيسية
+      navigate("/"); // الانتقال إلى الصفحة الرئيسية
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
       toast({
@@ -89,14 +92,14 @@ const Auth = () => {
     }
 
     try {
-      await register(signupName, signupEmail, signupPassword);
+      await registerStore(signupName, signupEmail, signupPassword);
 
       toast({
         title: "تم إنشاء الحساب بنجاح",
         description: "تم تسجيلك بنجاح",
       });
 
-      navigate("/"); // <<< الانتقال إلى الصفحة الرئيسية بعد إنشاء الحساب
+      navigate("/"); // الانتقال إلى الصفحة الرئيسية بعد إنشاء الحساب
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
       toast({
@@ -159,7 +162,6 @@ const Auth = () => {
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className="pr-10 pl-10"
                     />
-
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}

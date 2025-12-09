@@ -13,12 +13,24 @@ import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Event } from "./useCalendarState";
 
+// نوع بيانات النموذج
+type EventFormData = {
+  title: string;
+  date: Date | null;
+  time: string;
+  duration: string;
+  type: string;
+  location: string;
+  attendees: string;
+  description: string;
+};
+
 interface EventDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   editingEvent: Event | null;
-  formData: any;
-  setFormData: (data: any) => void;
+  formData: EventFormData;
+  setFormData: (data: EventFormData) => void;
   handleSubmit: () => void;
   resetForm: () => void;
 }
