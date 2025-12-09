@@ -12,13 +12,14 @@ import Projects from "./pages/Projects";
 import ProjectDetails from "./pages/ProjectDetails";
 import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar/index";
-import Files from "./pages/Files/index"; // ✅ تم التعديل هنا
+import Files from "./pages/Files/index";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import ChatRoom from "./pages/ChatRoom";
 import RolesPermissions from "./pages/RolesPermissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Notifications from "./pages/Notifications";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="users" element={<Users />} />
               <Route path="team" element={<Team />} />
               <Route path="chat" element={<Chat />} />
+               <Route path="chat/:id" element={<ChatRoom />} />
               <Route path="settings" element={<Settings />} />
               <Route path="profile" element={<Profile />} />
               <Route path="roles" element={<RolesPermissions />} />
