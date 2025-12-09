@@ -5,6 +5,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\api\ProjectController;
 use App\Http\Controllers\api\TaskController;
+use App\Http\Controllers\EventController;
+
+// مسار لجلب كل الأحداث
+Route::get('/events', [EventController::class, 'index']);
+
+// مسار لإنشاء حدث جديد
+Route::post('/events', [EventController::class, 'store']);
+
 // ------------------------
 // 🔹 التسجيل وتسجيل الدخول
 // ------------------------
