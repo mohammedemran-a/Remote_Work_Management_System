@@ -13,6 +13,7 @@ import {
   Users,
   Shield,
   UserCheck,
+  Mail,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -162,7 +163,11 @@ const UsersPage = () => {
   /* ============== SAVE USER ============== */
 
   const handleSaveUser = async () => {
-    if (!formData.name || !formData.email || (!selectedUser && !formData.password)) {
+    if (
+      !formData.name ||
+      !formData.email ||
+      (!selectedUser && !formData.password)
+    ) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -289,24 +294,34 @@ const UsersPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>المستخدم</TableHead>
-                <TableHead>البريد الإلكتروني</TableHead>
-                <TableHead>الدور</TableHead>
-                <TableHead className="text-center">الإجراءات</TableHead>
+                <TableHead className="text-right">المستخدم</TableHead>
+                <TableHead className="text-right">البريد الإلكتروني</TableHead>
+                <TableHead className="text-right">الدور</TableHead>
+                <TableHead className="text-right">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarFallback>
-                        {user.name.split(" ").map((n) => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    {user.name}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarFallback>
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{user.name}</span>
+                    </div>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
+                     <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail  className="h-4 w-4" />
+                      {user.email}
+                    </div>
+                  </TableCell>
                   <TableCell>{user.role}</TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
@@ -316,7 +331,9 @@ const UsersPage = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleOpenDialog(user)}>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenDialog(user)}
+                        >
                           <Edit className="ml-2 h-4 w-4" />
                           تعديل
                         </DropdownMenuItem>
@@ -345,7 +362,9 @@ const UsersPage = () => {
               {selectedUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}
             </DialogTitle>
             <DialogDescription>
-              {selectedUser ? "قم بتحديث البيانات" : "أدخل بيانات المستخدم الجديد"}
+              {selectedUser
+                ? "قم بتحديث البيانات"
+                : "أدخل بيانات المستخدم الجديد"}
             </DialogDescription>
           </DialogHeader>
 
@@ -413,7 +432,10 @@ const UsersPage = () => {
       </Dialog>
 
       {/* ===== DELETE ALERT ===== */}
-      <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+      <AlertDialog
+        open={!!userToDelete}
+        onOpenChange={() => setUserToDelete(null)}
+      >
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>

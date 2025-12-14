@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,7 +17,7 @@ import {
   Grid,
   List,
   Calendar,
-  User
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -261,9 +258,7 @@ const FilesUI = ({
                         <Download className="ml-2 h-4 w-4" />
                         تحميل
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleOpenDialog(file)}
-                      >
+                      <DropdownMenuItem onClick={() => handleOpenDialog(file)}>
                         تعديل البيانات
                       </DropdownMenuItem>
                       <DropdownMenuItem>
@@ -298,7 +293,12 @@ const FilesUI = ({
                   </div>
                   <div className="flex items-center gap-1">
                     <Download className="h-3 w-3" />
-                    {file.downloads}
+                    {file.downloads} تحميل
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <FolderOpen className="h-3 w-3" />
+                    {file.project?.name || "بدون مشروع"}
                   </div>
                 </div>
               </CardContent>

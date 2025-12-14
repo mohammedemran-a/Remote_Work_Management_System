@@ -5,6 +5,11 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use App\Models\User;
+use App\Notifications\NewProjectNotification;
+use App\Notifications\ProjectUpdatedNotification;
+use App\Notifications\ProjectStatusChangedNotification;
+use App\Notifications\ProjectDeletedNotification;
 
 class ProjectController extends Controller
 {
@@ -29,6 +34,9 @@ class ProjectController extends Controller
 
         $project = Project::create($request->all());
 
+        $manager = User::find($request->manager_id);
+        $manager->notify(new NewProjectNotification($project));
+
         return response()->json([
             'message' => 'تم إنشاء المشروع بنجاح',
             'project' => $project
@@ -46,6 +54,7 @@ class ProjectController extends Controller
     public function update(Request $request, $id)
     {
         $project = Project::findOrFail($id);
+        $oldStatus = $project->status;
 
         $request->validate([
             'name'          => 'sometimes|string',
@@ -58,6 +67,14 @@ class ProjectController extends Controller
 
         $project->update($request->all());
 
+        $manager = User::find($project->manager_id);
+
+        $manager->notify(new ProjectUpdatedNotification($project));
+
+        if ($request->has('status') && $oldStatus !== $project->status) {
+            $manager->notify(new ProjectStatusChangedNotification($project, $oldStatus, $project->status));
+        }
+
         return response()->json([
             'message' => 'تم تحديث المشروع بنجاح',
             'project' => $project
@@ -68,6 +85,10 @@ class ProjectController extends Controller
     public function destroy($id)
     {
         $project = Project::findOrFail($id);
+
+        $manager = User::find($project->manager_id);
+        $manager->notify(new ProjectDeletedNotification($project));
+
         $project->delete();
 
         return response()->json([

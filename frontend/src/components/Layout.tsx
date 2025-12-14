@@ -17,13 +17,18 @@ import {
   Activity,
   Bell
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationSidebar from "@/components/NotificationSidebar";
+import { getSettings } from "@/api/settings";
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // اسم الشركة واسم النظام مع القيم الافتراضية
+  const [companyName, setCompanyName] = useState<string>("إدارة العمل");
+  const [systemName, setSystemName] = useState<string>("مرحبا بك في نظام إدارة العمل عن بعد");
 
   const navigation = [
     { name: "الصفحة الرئيسية", href: "/", icon: Home },
@@ -43,6 +48,30 @@ const Layout = () => {
     { name: "سجل الأنشطة", href: "/logs", icon: Activity },
   ];
 
+  // ==========================
+  // ✅ جلب إعدادات النظام من API
+  // ==========================
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await getSettings();
+
+        // تأكد أن القيم من النوع string
+        if (data.company_name && typeof data.company_name === "string") {
+          setCompanyName(data.company_name);
+        }
+
+        if (data.system_name && typeof data.system_name === "string") {
+          setSystemName(`مرحبا بك في نظام ${data.system_name}`);
+        }
+      } catch (error) {
+        console.error("خطأ في جلب إعدادات النظام:", error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
   return (
     <div className="h-screen bg-background flex overflow-hidden" dir="rtl">
       {/* Mobile sidebar backdrop */}
@@ -59,7 +88,9 @@ const Layout = () => {
       }`}>
         {/* Sidebar Header - Fixed */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
-          <h1 className="text-xl font-bold text-primary">إدارة العمل</h1>
+          <h1 className="text-xl font-bold text-primary">
+            {companyName}
+          </h1>
           <Button
             variant="ghost"
             size="icon"
@@ -100,7 +131,7 @@ const Layout = () => {
         {/* Header - Fixed */}
         <header className="bg-card shadow-sm border-b border-border h-16 flex-shrink-0">
           <div className="flex items-center justify-between h-full px-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:gap-4">
               <Button
                 variant="ghost"
                 size="icon"
@@ -110,8 +141,8 @@ const Layout = () => {
                 <Menu className="h-6 w-6" />
               </Button>
               
-              <div className="text-sm text-muted-foreground hidden md:block">
-                مرحباً بك في نظام إدارة العمل عن بُعد
+              <div className="text-sm text-muted-foreground">
+                {systemName}
               </div>
             </div>
             

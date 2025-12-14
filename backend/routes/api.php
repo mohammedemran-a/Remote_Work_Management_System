@@ -5,7 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\api\ProjectController;
 use App\Http\Controllers\api\TaskController;
-
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EventController;
 
 // مسار لجلب كل الأحداث
@@ -61,7 +61,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/project-files/{id}', [ProjectFileController::class, 'show']);
     Route::put('/project-files/{id}', [ProjectFileController::class, 'update']);
     Route::delete('/project-files/{id}', [ProjectFileController::class, 'destroy']);
-    Route::get('/project-files/download/{id}', [ProjectFileController::class, 'download']);
+    Route::get('/project-files/{id}/download', [ProjectFileController::class, 'download']);
+
 });
 
 
@@ -71,3 +72,39 @@ Route::get('/roles', [RolePermissionController::class, 'index']);
     Route::put('/roles/{id}', [RolePermissionController::class, 'update']);
     Route::delete('/roles/{id}', [RolePermissionController::class, 'destroy']);
 
+
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    // جلب بيانات المستخدم الحالي
+    Route::get('/profile/me', [ProfileController::class, 'me']);
+
+    // تحديث الملف الشخصي
+    Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
+
+    // تحديث كلمة المرور
+    Route::post('/profile/password', [ProfileController::class, 'updatePassword']);
+});
+
+use App\Http\Controllers\api\SettingController;
+
+Route::get('/settings', [SettingController::class, 'index']);
+Route::post('/settings', [SettingController::class, 'update']);
+
+
+use App\Http\Controllers\Api\ActivityLogController;
+
+Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+Route::delete('/activity-logs/{id}', [ActivityLogController::class, 'destroy']);
+Route::delete('/activity-logs', [ActivityLogController::class, 'destroyMultiple']);
+
+
+use App\Http\Controllers\NotificationController;
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::delete('/notifications', [NotificationController::class, 'clearAll']);
+});

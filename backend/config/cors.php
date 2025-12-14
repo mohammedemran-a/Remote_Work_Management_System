@@ -6,8 +6,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // 👇 ضع هنا عنوان تطبيقك React أو Flutter Web
-   'allowed_origins' => ['http://localhost:8000', 'http://localhost:3000', 'http://localhost:8001'],
+   'allowed_origins' => ['http://localhost:8000', 'http://localhost:3000', 'http://localhost:8000'],
 
     'allowed_origins_patterns' => [],
 
@@ -17,7 +16,6 @@ return [
 
     'max_age' => 0,
 
-    // 👇 ضروري للسماح بالكوكيز
     'supports_credentials' => true,
 
 ];

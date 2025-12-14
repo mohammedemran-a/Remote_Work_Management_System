@@ -1,25 +1,36 @@
+// src/api/profile.ts
 import { api } from "./axios";
 
-export const updateProfile = async (data: unknown) => {
-  const response = await api.put("/user/update-profile", data);
-  return response.data;
+// جلب البروفايل
+export const getMyProfile = async () => {
+  try {
+    const response = await api.get("/profile/me");
+    return response.data;
+  } catch (error: unknown) {
+    console.error("Error fetching profile:", error);
+    throw error;
+  }
 };
 
-export const updatePassword = async (current_password: string, new_password: string) => {
-  const response = await api.put("/user/update-password", {
-    current_password,
-    new_password,
-  });
-  return response.data;
-};
+// تحديث البروفايل
+export const updateMyProfile = async (
+  data: FormData | { job_title?: string; status?: string; joined_at?: string }
+) => {
+  try {
+    const isFormData = data instanceof FormData;
 
-export const uploadAvatar = async (file: File) => {
-  const form = new FormData();
-  form.append("avatar", file);
+    const response = await api.post("/profile/update", data, {
+      headers: {
+        "Content-Type": isFormData
+          ? "multipart/form-data"
+          : "application/json",
+      },
+    });
 
-  const response = await api.post("/user/update-avatar", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+    return response.data;
 
-  return response.data;
+  } catch (error: unknown) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
 };

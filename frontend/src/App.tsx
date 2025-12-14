@@ -25,11 +25,13 @@ import ActivityLogs from "./pages/ActivityLogs";
 import Notifications from "./pages/Notifications";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
+// import { SettingsProvider } from "@/context/SettingsContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+      {/* <SettingsProvider> */}
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
         <Toaster />
@@ -64,6 +66,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
+  {/* </SettingsProvider> */}
   </QueryClientProvider>
 );
 
