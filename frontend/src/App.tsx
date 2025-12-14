@@ -13,8 +13,8 @@ import ProjectDetails from "./pages/ProjectDetails";
 import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar/index";
 import Files from "./pages/Files/index"; // ✅ تم التعديل هنا
-import Reports from "./pages/Reports";
-import Team from "./pages/Team";
+import Reports from "./pages/Reports/index";
+import Team from "./pages/Team/index";
 import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
@@ -22,7 +22,7 @@ import Profile from "./pages/Profile";
 import RolesPermissions from "./pages/RolesPermissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Notifications from "./pages/Notifications";
-import Users from "./pages/Users";
+import Users from "./pages/Users/index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

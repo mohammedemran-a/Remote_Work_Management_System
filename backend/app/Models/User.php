@@ -46,4 +46,8 @@ class User extends Authenticatable
     public function uploadedFiles() {
        return $this->hasMany(ProjectFile::class, 'uploaded_by');
     }
+    public function teamMember()
+{
+    return $this->hasOne(TeamMember::class);
+}
 }

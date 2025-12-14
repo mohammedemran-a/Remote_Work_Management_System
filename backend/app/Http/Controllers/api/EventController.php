@@ -2,8 +2,7 @@
 
 // in app/Http/Controllers/EventController.php
 
-namespace App\Http\Controllers;
-
+namespace App\Http\Controllers\api;
 use Illuminate\Http\Request;
 use App\Models\Event;
 

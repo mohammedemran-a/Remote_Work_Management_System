@@ -1,67 +1,88 @@
+// src/api/users.ts
+
 import { api } from "./axios";
 import { AxiosError } from "axios";
 
+/* ================= TYPES ================= */
+
+// واجهة Role يمكن استخدامها في أي مكان
+export interface Role {
+  id: number;
+  name: string;
+}
+
+// 1. الواجهة الرئيسية للمستخدم (User Interface)
 export interface User {
   id: number;
   name: string;
   email: string;
-  roles: string[];
-  permissions: string[];
+  department: string | null;
+  roles: Role[];
+  created_at: string;
+  updated_at: string;
 }
 
+// 2. واجهة الحمولة (Payload) التي يتم إرسالها إلى الـ API (النسخة المصححة)
+export interface UserPayload {
+  name: string;
+  email: string;
+  password?: string;
+  department?: string;
+  roles: string[]; // ✅✅ التعديل الوحيد والمهم: يجب أن تكون مصفوفة من النصوص (أسماء الأدوار)
+}
+
+// واجهة لرسائل الخطأ من الـ API
 interface ApiError {
   message: string;
+  errors?: Record<string, string[]>;
 }
 
-// جلب كل المستخدمين
+/* ================= API FUNCTIONS ================= */
+
+// --- جلب كل المستخدمين ---
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    const response = await api.get("/users");
-    
-    return response.data.users; // backend يعيد users داخل object
-    
-  } catch (error: unknown) {
+    const response = await api.get<{ data: User[] }>("/users");
+    // 🟢 التأكد من التعامل مع الاستجابة المغلفة
+    return response.data.data || response.data; 
+  } catch (error) {
     const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في جلب المستخدمين" };
+    console.error("Error fetching users:", err.response?.data);
+    throw err.response?.data || { message: "خطأ غير معروف في جلب المستخدمين" };
   }
 };
 
-// إنشاء مستخدم جديد مع الدور
-export const createUser = async (
-  name: string,
-  email: string,
-  password: string,
-  role: string
-): Promise<User> => {
+// --- إنشاء مستخدم جديد ---
+export const createUser = async (payload: UserPayload): Promise<User> => {
   try {
-    const response = await api.post("/users", { name, email, password, role });
-    return response.data.user;
-  } catch (error: unknown) {
+    const response = await api.post<{ data: User }>("/users", payload);
+    return response.data.data;
+  } catch (error) {
     const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في إنشاء المستخدم" };
+    console.error("Error creating user:", err.response?.data);
+    throw err.response?.data || { message: "خطأ غير معروف في إنشاء المستخدم" };
   }
 };
 
-// تعديل مستخدم مع دعم الدور
-export const updateUser = async (
-  id: number,
-  data: Partial<User> & { password?: string; role?: string }
-): Promise<User> => {
+// --- تحديث مستخدم موجود ---
+export const updateUser = async (id: number, payload: Partial<UserPayload>): Promise<User> => {
   try {
-    const response = await api.put(`/users/${id}`, data);
-    return response.data.user;
-  } catch (error: unknown) {
+    const response = await api.put<{ data: User }>(`/users/${id}`, payload);
+    return response.data.data;
+  } catch (error) {
     const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في تعديل المستخدم" };
+    console.error("Error updating user:", err.response?.data);
+    throw err.response?.data || { message: "خطأ غير معروف في تحديث المستخدم" };
   }
 };
 
-// حذف مستخدم
+// --- حذف مستخدم ---
 export const deleteUser = async (id: number): Promise<void> => {
   try {
     await api.delete(`/users/${id}`);
-  } catch (error: unknown) {
+  } catch (error) {
     const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في حذف المستخدم" };
+    console.error("Error deleting user:", err.response?.data);
+    throw err.response?.data || { message: "خطأ غير معروف في حذف المستخدم" };
   }
 };

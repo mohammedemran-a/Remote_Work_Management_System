@@ -1,58 +1,38 @@
 <?php
 
+// 🟢 تأكد من أن هذا الـ namespace يطابق مسار الملف
 namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Validator; // 🟢 إضافة استيراد Validator
+use Illuminate\Validation\Rule;          // 🟢 إضافة استيراد Rule
+use App\Http\Controllers\Controller;
 
 class UsersController extends Controller
 {
-    // -----------------------------
-    // 🟡 جلب بيانات المستخدم الحالي
-    // -----------------------------
-    public function user(Request $request)
-    {
-        $user = $request->user();
-        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
-
-        $user->load('roles', 'permissions');
-
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
-            ],
-        ]);
-    }
-
     // -----------------------------
     // 📋 جلب جميع المستخدمين
     // -----------------------------
     public function index(Request $request)
     {
-        // نعيد نفس وظيفة allUsers باسم index
-        $user = $request->user();
-        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
-
-        if (!$user->hasRole('admin') && !$user->can('users_view')) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $users = User::with('roles')->get()->map(function ($u) {
+        $users_data = User::with('roles')->latest()->get()->map(function ($user) {
             return [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'roles' => $u->getRoleNames(),
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'department' => $user->department,
+                'roles' => $user->roles->map(function($role) {
+                    return ['id' => $role->id, 'name' => $role->name];
+                }),
+                // 🟢 إضافة created_at و updated_at لتوحيد الواجهة
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
             ];
         });
 
-        return response()->json(['users' => $users]);
+        return response()->json(['data' => $users_data]);
     }
 
     // -----------------------------
@@ -60,105 +40,100 @@ class UsersController extends Controller
     // -----------------------------
     public function store(Request $request)
     {
-        $admin = $request->user();
-        if (!$admin || (!$admin->hasRole('admin') && !$admin->can('users_create'))) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => [
-                'required',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (!Role::where('name', $value)->exists()) {
-                        $fail("الدور المختار غير صالح.");
-                    }
-                },
-            ],
+            'department' => 'nullable|string|max:255',
+            'roles' => 'required|array',
+            'roles.*' => 'string|exists:roles,name',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'البيانات المرسلة غير صالحة', 'errors' => $validator->errors()], 422);
+        }
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'department' => $request->department,
         ]);
+        $user->syncRoles($request->roles);
 
-        $user->assignRole($request->role);
+        $newUser = User::with('roles')->find($user->id);
+        $newUserData = [
+            'id' => $newUser->id,
+            'name' => $newUser->name,
+            'email' => $newUser->email,
+            'department' => $newUser->department,
+            'roles' => $newUser->roles->map(function($role) {
+                return ['id' => $role->id, 'name' => $role->name];
+            }),
+            'created_at' => $newUser->created_at,
+            'updated_at' => $newUser->updated_at,
+        ];
 
         return response()->json([
-            'message' => 'User created successfully',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-            ],
+            'message' => 'تم إنشاء المستخدم بنجاح',
+            'data' => $newUserData
         ], 201);
     }
-
+    
     // -----------------------------
-    // ✏️ تعديل بيانات مستخدم
+    // 🔄 تحديث مستخدم موجود (تمت إضافته الآن)
     // -----------------------------
-    public function update(Request $request, $id)
+    public function update(Request $request, User $user)
     {
-        $admin = $request->user();
-        if (!$admin || (!$admin->hasRole('admin') && !$admin->can('users_edit'))) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $user = User::find($id);
-        if (!$user) return response()->json(['message' => 'User not found'], 404);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string|max:255',
+            'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => [
-                'required',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (!Role::where('name', $value)->exists()) {
-                        $fail("الدور المختار غير صالح.");
-                    }
-                },
-            ],
+            'department' => 'nullable|string|max:255',
+            'roles' => 'sometimes|required|array',
+            'roles.*' => 'string|exists:roles,name',
         ]);
 
-        $user->name = $request->name;
-        $user->email = $request->email;
-        if ($request->password) $user->password = Hash::make($request->password);
+        if ($validator->fails()) {
+            return response()->json(['message' => 'البيانات المرسلة غير صالحة', 'errors' => $validator->errors()], 422);
+        }
 
+        $validatedData = $validator->validated();
+        $user->update($request->only(['name', 'email', 'department']));
+
+        if (!empty($validatedData['password'])) {
+            $user->password = Hash::make($validatedData['password']);
+        }
+        if (isset($validatedData['roles'])) {
+            $user->syncRoles($validatedData['roles']);
+        }
         $user->save();
-        $user->syncRoles([$request->role]);
+
+        $updatedUser = User::with('roles')->find($user->id);
+        $updatedUserData = [
+            'id' => $updatedUser->id,
+            'name' => $updatedUser->name,
+            'email' => $updatedUser->email,
+            'department' => $updatedUser->department,
+            'roles' => $updatedUser->roles->map(function($role) {
+                return ['id' => $role->id, 'name' => $role->name];
+            }),
+            'created_at' => $updatedUser->created_at,
+            'updated_at' => $updatedUser->updated_at,
+        ];
 
         return response()->json([
-            'message' => 'User updated successfully',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-            ],
+            'message' => 'تم تحديث المستخدم بنجاح!',
+            'data' => $updatedUserData
         ]);
     }
 
     // -----------------------------
-    // ❌ حذف مستخدم
+    // 🗑️ حذف مستخدم (تمت إضافته الآن)
     // -----------------------------
-    public function destroy(Request $request, $id)
+    public function destroy(User $user)
     {
-        $admin = $request->user();
-        if (!$admin || (!$admin->hasRole('admin') && !$admin->can('users_delete'))) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        $user = User::find($id);
-        if (!$user) return response()->json(['message' => 'User not found'], 404);
-
         $user->delete();
-        return response()->json(['message' => 'User deleted successfully']);
+        return response()->json(['message' => 'تم حذف المستخدم بنجاح.']);
     }
 }
