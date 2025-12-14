@@ -30,7 +30,11 @@ interface UsersTableProps {
 export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
   // دالة للحصول على الأحرف الأولى من الاسم
   const getInitials = (name: string) => {
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase();
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   return (
@@ -42,10 +46,10 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>المستخدم</TableHead>
-              <TableHead>البريد الإلكتروني</TableHead>
-              <TableHead>القسم</TableHead>
-              <TableHead>الدور</TableHead>
+              <TableHead className="text-right">المستخدم</TableHead>
+              <TableHead className="text-right">البريد الإلكتروني</TableHead>
+              <TableHead className="text-right">القسم</TableHead>
+              <TableHead className="text-right">الدور</TableHead>
               <TableHead className="text-center">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>
@@ -61,7 +65,9 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
                 </TableCell>
 
                 {/* خلية البريد الإلكتروني */}
-                <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {user.email}
+                </TableCell>
 
                 {/* خلية القسم */}
                 <TableCell className="text-muted-foreground">
@@ -70,8 +76,11 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
 
                 {/* خلية الدور */}
                 <TableCell>
-                  {user.roles.map(role => (
-                    <span key={role.id} className="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full">
+                  {user.roles.map((role) => (
+                    <span
+                      key={role.id}
+                      className="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full"
+                    >
                       {role.name}
                     </span>
                   ))}

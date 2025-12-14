@@ -1,8 +1,8 @@
 <?php
 
-// in app/Http/Controllers/EventController.php
-
 namespace App\Http\Controllers\api;
+
+use App\Http\Controllers\Controller; // ← تصحيح الاستدعاء
 use Illuminate\Http\Request;
 use App\Models\Event;
 
@@ -37,4 +37,3 @@ class EventController extends Controller
         return response()->json($event, 201);
     }
 }
-

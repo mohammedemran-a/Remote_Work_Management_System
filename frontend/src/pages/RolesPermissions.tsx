@@ -48,7 +48,6 @@ const RolesPermissions = () => {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
 
-  // 🔹 دالة لتصنيف الصلاحيات حسب القسم
   const getCategoryFromPermission = (perm: string): string => {
     if (perm.startsWith("dashboard")) return "لوحة التحكم";
     if (perm.startsWith("users")) return "المستخدمين";
@@ -63,24 +62,28 @@ const RolesPermissions = () => {
     return "عام";
   };
 
-  // 🔹 جلب الأدوار
   const fetchRoles = useCallback(async () => {
     try {
       const res = await getRoles();
-      setRoles(res.data);
+      const mappedRoles = res.map((role) => ({
+        id: role.id,
+        name: role.name,
+        permissions: role.permissions || [],
+        usersCount: role.usersCount || 0,
+      }));
+      setRoles(mappedRoles);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "فشل جلب الأدوار";
       toast({ title: "خطأ", description: message });
     }
   }, [toast]);
 
-  // 🔹 جلب الصلاحيات
   const fetchPermissions = useCallback(async () => {
     try {
       const res = await getPermissions();
-      const mapped: PermissionItem[] = res.data.map((p: string) => ({
+      const mapped: PermissionItem[] = res.map((p: string) => ({
         name: p,
-        label: permissionsTranslation[p] || p, // استخدام الترجمة من الملف
+        label: permissionsTranslation[p] || p,
         category: getCategoryFromPermission(p),
       }));
       setPermissions(mapped);
@@ -95,7 +98,6 @@ const RolesPermissions = () => {
     fetchPermissions();
   }, [fetchRoles, fetchPermissions]);
 
-  // 🔹 حذف دور
   const handleDeleteRole = async (roleId: number) => {
     try {
       await deleteRole(roleId);
@@ -110,7 +112,6 @@ const RolesPermissions = () => {
     }
   };
 
-  // 🔹 حفظ دور جديد
   const handleSaveRole = async () => {
     if (!newRoleName || newRolePermissions.length === 0) {
       toast({
@@ -141,7 +142,6 @@ const RolesPermissions = () => {
     );
   };
 
-  // 🔹 الأقسام الجديدة مع السابقة
   const roleCategories = [
     "لوحة التحكم",
     "المستخدمين",
@@ -157,10 +157,11 @@ const RolesPermissions = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* زر إضافة دور جديد */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">الأدوار والصلاحيات</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            الأدوار والصلاحيات
+          </h1>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -171,7 +172,10 @@ const RolesPermissions = () => {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogContent
+            className="max-w-3xl max-h-[80vh] overflow-y-auto"
+            dir="rtl"
+          >
             <DialogHeader>
               <DialogTitle>إضافة دور جديد</DialogTitle>
             </DialogHeader>
@@ -205,8 +209,12 @@ const RolesPermissions = () => {
                             >
                               <Checkbox
                                 id={permission.name}
-                                checked={newRolePermissions.includes(permission.name)}
-                                onCheckedChange={() => togglePermission(permission.name)}
+                                checked={newRolePermissions.includes(
+                                  permission.name
+                                )}
+                                onCheckedChange={() =>
+                                  togglePermission(permission.name)
+                                }
                               />
                               <label
                                 htmlFor={permission.name}
@@ -233,7 +241,6 @@ const RolesPermissions = () => {
         </Dialog>
       </div>
 
-      {/* الأدوار */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -285,7 +292,6 @@ const RolesPermissions = () => {
         </CardContent>
       </Card>
 
-      {/* جدول الصلاحيات */}
       <Card>
         <CardHeader>
           <CardTitle>جدول الصلاحيات</CardTitle>
@@ -308,7 +314,9 @@ const RolesPermissions = () => {
               <TableBody>
                 {permissions.map((permission) => (
                   <TableRow key={permission.name}>
-                    <TableCell className="font-medium">{permission.label}</TableCell>
+                    <TableCell className="font-medium">
+                      {permission.label}
+                    </TableCell>
                     {roles.map((role) => (
                       <TableCell key={role.id} className="text-center">
                         {role.permissions.includes("all") ||

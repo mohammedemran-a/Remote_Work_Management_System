@@ -12,7 +12,7 @@ use App\Http\Controllers\api\EventController;
 use App\Http\Controllers\api\TeamController;
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\EventController;
+
 
 // مسار لجلب كل الأحداث
 Route::get('/events', [EventController::class, 'index']);
