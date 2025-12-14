@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -22,6 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import NewConversationDialog from "@/components/chat/NewConversationDialog";
+import AddMembersDialog from "@/components/chat/AddMembersDialog";
 
 interface Message {
   id: number;
@@ -38,47 +42,59 @@ interface Conversation {
   id: number;
   name: string;
   project: string;
+  projectId: number;
   lastMessage: string;
   unreadCount: number;
   online: boolean;
   lastSeen: string;
+  memberIds: number[];
 }
 
 const Chat = () => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [selectedConversation, setSelectedConversation] = useState<number>(1);
   const [messageText, setMessageText] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
+  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
 
-  // Mock data
-  const conversations: Conversation[] = [
+  // Mock data with projectId
+  const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: 1,
       name: "فريق التصميم",
       project: "مشروع تطبيق الموبايل",
+      projectId: 1,
       lastMessage: "تم الانتهاء من التصميم الأولي",
       unreadCount: 3,
       online: true,
       lastSeen: "متصل الآن",
+      memberIds: [1, 2, 3],
     },
     {
       id: 2,
       name: "فريق التطوير",
       project: "مشروع الموقع الإلكتروني",
+      projectId: 2,
       lastMessage: "يرجى مراجعة الكود",
       unreadCount: 0,
       online: false,
       lastSeen: "آخر ظهور منذ 5 دقائق",
+      memberIds: [1, 4, 5],
     },
     {
       id: 3,
       name: "اجتماع الدعم الفني",
       project: "مشروع تطبيق الموبايل",
+      projectId: 1,
       lastMessage: "موعد الاجتماع غداً الساعة 10 صباحاً",
       unreadCount: 1,
       online: true,
       lastSeen: "متصل الآن",
+      memberIds: [2, 3, 6],
     },
-  ];
+  ]);
 
   const messages: Message[] = [
     {
@@ -139,6 +155,68 @@ const Chat = () => {
     console.log("تحميل ملف");
   };
 
+  const handleNewConversation = (projectId: number, memberIds: number[]) => {
+    const projectNames: Record<number, string> = {
+      1: "مشروع تطبيق الموبايل",
+      2: "مشروع الموقع الإلكتروني",
+      3: "مشروع نظام إدارة المخزون",
+      4: "مشروع التجارة الإلكترونية",
+    };
+
+    // Generate team name based on project
+    const teamNames: Record<number, string> = {
+      1: "فريق تطبيق الموبايل",
+      2: "فريق الموقع الإلكتروني",
+      3: "فريق إدارة المخزون",
+      4: "فريق التجارة الإلكترونية",
+    };
+
+    const newId = Date.now(); // Unique ID based on timestamp
+    const newConversation: Conversation = {
+      id: newId,
+      name: teamNames[projectId] || `فريق المشروع ${projectId}`,
+      project: projectNames[projectId] || "مشروع غير معروف",
+      projectId: projectId,
+      lastMessage: "تم إنشاء المحادثة",
+      unreadCount: 0,
+      online: true,
+      lastSeen: "متصل الآن",
+      memberIds: memberIds,
+    };
+
+    // Save to localStorage for persistence
+    const storedConversations = localStorage.getItem("chat_conversations");
+    const existingConversations = storedConversations ? JSON.parse(storedConversations) : [];
+    localStorage.setItem("chat_conversations", JSON.stringify([
+      { ...newConversation, membersCount: memberIds.length },
+      ...existingConversations
+    ]));
+
+    setConversations([newConversation, ...conversations]);
+    
+    toast({
+      title: "تم إنشاء المحادثة",
+      description: "جاري التوجيه إلى صفحة المحادثة...",
+    });
+
+    // Navigate to the new conversation page
+    navigate(`/chat/${newId}`);
+  };
+
+  const handleAddMembers = (memberIds: number[]) => {
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.id === selectedConversation
+          ? { ...conv, memberIds: [...conv.memberIds, ...memberIds] }
+          : conv
+      )
+    );
+    toast({
+      title: "تمت إضافة الأعضاء",
+      description: `تم إضافة ${memberIds.length} عضو إلى المحادثة`,
+    });
+  };
+
   return (
     <div className="h-screen flex bg-background" dir="rtl">
       {/* Sidebar - Conversations List */}
@@ -146,7 +224,11 @@ const Chat = () => {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">المحادثات</h2>
-            <Button size="icon" variant="ghost">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setIsNewConversationOpen(true)}
+            >
               <Plus className="h-5 w-5" />
             </Button>
           </div>
@@ -162,35 +244,37 @@ const Chat = () => {
         </div>
 
         <ScrollArea className="flex-1">
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              onClick={() => setSelectedConversation(conversation.id)}
-              className={`p-4 border-b border-border cursor-pointer hover:bg-accent transition-colors ${
-                selectedConversation === conversation.id ? "bg-accent" : ""
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarFallback>
-                    <Users className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-sm truncate">{conversation.name}</h3>
-                    {conversation.unreadCount > 0 && (
-                      <Badge className="mr-2">{conversation.unreadCount}</Badge>
-                    )}
+          {conversations
+            .filter((c) => c.name.includes(searchText) || c.project.includes(searchText))
+            .map((conversation) => (
+              <div
+                key={conversation.id}
+                onClick={() => navigate(`/chat/${conversation.id}`)}
+                className={`p-4 border-b border-border cursor-pointer hover:bg-accent transition-colors ${
+                  selectedConversation === conversation.id ? "bg-accent" : ""
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar>
+                    <AvatarFallback>
+                      <Users className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-semibold text-sm truncate">{conversation.name}</h3>
+                      {conversation.unreadCount > 0 && (
+                        <Badge className="mr-2">{conversation.unreadCount}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">{conversation.project}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {conversation.lastMessage}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-1">{conversation.project}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {conversation.lastMessage}
-                  </p>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
         </ScrollArea>
       </div>
 
@@ -226,7 +310,9 @@ const Chat = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>تفاصيل المحادثة</DropdownMenuItem>
-                <DropdownMenuItem>إضافة أعضاء</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsAddMembersOpen(true)}>
+                  إضافة أعضاء
+                </DropdownMenuItem>
                 <DropdownMenuItem>كتم الإشعارات</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">
                   مغادرة المحادثة
@@ -326,6 +412,20 @@ const Chat = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <NewConversationDialog
+        open={isNewConversationOpen}
+        onOpenChange={setIsNewConversationOpen}
+        onSave={handleNewConversation}
+      />
+
+      <AddMembersDialog
+        open={isAddMembersOpen}
+        onOpenChange={setIsAddMembersOpen}
+        onAdd={handleAddMembers}
+        existingMemberIds={currentConversation?.memberIds || []}
+      />
     </div>
   );
 };

@@ -31,6 +31,10 @@ export interface ProjectFile {
     name: string;
     email?: string;
   };
+    project?: {
+    id: number;
+    name: string;
+  };
 }
 
 // =============================
