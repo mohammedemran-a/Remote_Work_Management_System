@@ -12,5 +12,22 @@
   "notifications_view": "عرض الإشعارات",
   "notifications_delete": "حذف الإشعارات",
   "settings_view": "عرض الإعدادات",
-  "settings_edit": "تعديل الإعدادات"
+  "settings_edit": "تعديل الإعدادات",
+
+  "projects_view": "عرض المشاريع",
+  "projects_create": "إنشاء مشروع",
+  "projects_edit": "تعديل المشاريع",
+  "projects_delete": "حذف المشاريع",
+  "tasks_view": "عرض المهام",
+  "tasks_create": "إنشاء مهمة",
+  "tasks_edit": "تعديل المهام",
+  "tasks_delete": "حذف المهام",
+  "calendar_view": "عرض التقويم",
+  "calendar_create": "إنشاء حدث",
+  "calendar_edit": "تعديل الأحداث",
+  "calendar_delete": "حذف الأحداث",
+  "files_view": "عرض الملفات",
+  "files_create": "رفع ملف",
+  "files_edit": "تعديل الملفات",
+  "files_delete": "حذف الملفات"
 }

@@ -453,10 +453,10 @@ const Projects = () => {
       </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-right">هل أنت متأكد؟</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
               سيتم حذف المشروع نهائيًا ولا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
           </AlertDialogHeader>

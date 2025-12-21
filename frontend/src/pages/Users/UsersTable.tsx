@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2 } from "lucide-react";
 import { User } from "@/api/users";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // واجهة الخصائص (Props) التي يتلقاها المكون
 interface UsersTableProps {
@@ -28,6 +29,11 @@ interface UsersTableProps {
 }
 
 export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
+  const canEdit = hasPermission("users_edit");
+  const canDelete = hasPermission("users_delete");
+
   // دالة للحصول على الأحرف الأولى من الاسم
   const getInitials = (name: string) => {
     return name
@@ -65,9 +71,7 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
                 </TableCell>
 
                 {/* خلية البريد الإلكتروني */}
-                <TableCell className="text-muted-foreground">
-                  {user.email}
-                </TableCell>
+                <TableCell className="text-muted-foreground">{user.email}</TableCell>
 
                 {/* خلية القسم */}
                 <TableCell className="text-muted-foreground">
@@ -88,26 +92,32 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
 
                 {/* خلية الإجراءات */}
                 <TableCell className="text-center">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => onEdit(user)}>
-                        <Edit className="ml-2 h-4 w-4" />
-                        تعديل
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onDelete(user.id)}
-                        className="text-red-600 focus:text-red-500"
-                      >
-                        <Trash2 className="ml-2 h-4 w-4" />
-                        حذف
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {(canEdit || canDelete) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(user)}>
+                            <Edit className="ml-2 h-4 w-4" />
+                            تعديل
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            onClick={() => onDelete(user.id)}
+                            className="text-red-600 focus:text-red-500"
+                          >
+                            <Trash2 className="ml-2 h-4 w-4" />
+                            حذف
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

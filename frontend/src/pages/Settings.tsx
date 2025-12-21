@@ -12,24 +12,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Save, Palette, Bell } from "lucide-react";
+import { Upload, Save, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { getSettings, updateSettings } from "@/api/settings";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const Settings = () => {
   const { toast } = useToast();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
+  const canView = hasPermission("settings_view");
+  const canEdit = hasPermission("settings_edit");
 
   const [form, setForm] = useState({
     company_name: "",
     system_name: "",
     logo: null as File | null,
-
-    dark_mode: false,
-
-    primary_color: "#3b82f6",
-    secondary_color: "#8b5cf6",
-    accent_color: "#10b981",
 
     notify_tasks: true,
     notify_comments: true,
@@ -43,30 +42,11 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
 
   // ==========================
-  // 📌 تطبيق الألوان الحية
-  // ==========================
-  const applyColors = (colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-  }) => {
-    document.documentElement.style.setProperty("--color-primary", colors.primary);
-    document.documentElement.style.setProperty("--color-secondary", colors.secondary);
-    document.documentElement.style.setProperty("--color-accent", colors.accent);
-  };
-
-  useEffect(() => {
-    applyColors({
-      primary: form.primary_color,
-      secondary: form.secondary_color,
-      accent: form.accent_color,
-    });
-  }, [form.primary_color, form.secondary_color, form.accent_color]);
-
-  // ==========================
-  // ✅ جلب الإعدادات من Laravel
+  // ✅ جلب الإعدادات (مع صلاحية العرض)
   // ==========================
   useEffect(() => {
+    if (!canView) return;
+
     const loadSettings = async () => {
       try {
         const data = await getSettings();
@@ -75,20 +55,23 @@ const Settings = () => {
           ...prev,
           company_name: String(data.company_name || ""),
           system_name: String(data.system_name || ""),
-          primary_color: String(data.primary_color || "#3b82f6"),
-          secondary_color: String(data.secondary_color || "#8b5cf6"),
-          accent_color: String(data.accent_color || "#10b981"),
-          dark_mode: data.dark_mode === true || data.dark_mode === "true",
-          notify_tasks: data.notify_tasks === true || data.notify_tasks === "true",
-          notify_comments: data.notify_comments === true || data.notify_comments === "true",
-          notify_projects: data.notify_projects === true || data.notify_projects === "true",
+          notify_tasks:
+            data.notify_tasks === true || data.notify_tasks === "true",
+          notify_comments:
+            data.notify_comments === true || data.notify_comments === "true",
+          notify_projects:
+            data.notify_projects === true || data.notify_projects === "true",
           notify_team: data.notify_team === true || data.notify_team === "true",
-          notify_email: data.notify_email === true || data.notify_email === "true",
-          weekly_report: data.weekly_report === true || data.weekly_report === "true",
+          notify_email:
+            data.notify_email === true || data.notify_email === "true",
+          weekly_report:
+            data.weekly_report === true || data.weekly_report === "true",
         }));
 
         if (data.logo) {
-          setLogoPreview(import.meta.env.VITE_API_URL + "/storage/" + data.logo);
+          setLogoPreview(
+            import.meta.env.VITE_API_URL + "/storage/" + data.logo
+          );
         }
       } catch (error) {
         console.error(error);
@@ -96,12 +79,14 @@ const Settings = () => {
     };
 
     loadSettings();
-  }, []);
+  }, [canView]);
 
   // ==========================
-  // ✅ رفع الشعار
+  // ✅ رفع الشعار (مع صلاحية التعديل)
   // ==========================
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit) return;
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -115,20 +100,15 @@ const Settings = () => {
   };
 
   // ==========================
-  // ✅ حفظ الإعدادات
+  // ✅ حفظ الإعدادات (مع صلاحية التعديل)
   // ==========================
   const handleSave = async () => {
+    if (!canEdit) return;
+
     try {
       setLoading(true);
 
       await updateSettings({ ...form });
-
-      // تطبيق الألوان بعد الحفظ لضمان التحديث
-      applyColors({
-        primary: form.primary_color,
-        secondary: form.secondary_color,
-        accent: form.accent_color,
-      });
 
       toast({
         title: "✅ تم الحفظ",
@@ -145,19 +125,27 @@ const Settings = () => {
     }
   };
 
+  // ==========================
+  // ❌ لا يملك صلاحية العرض
+  // ==========================
+  if (!canView) {
+    return (
+      <div className="p-10 text-center text-destructive text-lg font-semibold">
+        🚫 ليس لديك صلاحية عرض الإعدادات
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div>
         <h1 className="text-3xl font-bold text-foreground">الإعدادات</h1>
-        <p className="text-muted-foreground mt-2">
-          إدارة إعدادات النظام والتخصيص
-        </p>
+        <p className="text-muted-foreground mt-2">إدارة إعدادات النظام</p>
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="general">عام</TabsTrigger>
-          <TabsTrigger value="appearance">المظهر</TabsTrigger>
           <TabsTrigger value="notifications">الإشعارات</TabsTrigger>
         </TabsList>
 
@@ -173,6 +161,7 @@ const Settings = () => {
                 <Label>اسم الشركة</Label>
                 <Input
                   value={form.company_name}
+                  disabled={!canEdit || loading}
                   onChange={(e) =>
                     setForm({ ...form, company_name: e.target.value })
                   }
@@ -183,6 +172,7 @@ const Settings = () => {
                 <Label>اسم النظام</Label>
                 <Input
                   value={form.system_name}
+                  disabled={!canEdit || loading}
                   onChange={(e) =>
                     setForm({ ...form, system_name: e.target.value })
                   }
@@ -198,7 +188,11 @@ const Settings = () => {
                       className="w-24 h-24 rounded border object-cover"
                     />
                   )}
-                  <Button variant="outline" className="relative">
+                  <Button
+                    variant="outline"
+                    className="relative"
+                    disabled={!canEdit || loading}
+                  >
                     <Upload className="ml-2 h-4 w-4" />
                     رفع شعار
                     <input
@@ -211,71 +205,12 @@ const Settings = () => {
                 </div>
               </div>
 
-              <Button onClick={handleSave} disabled={loading}>
-                <Save className="ml-2 h-4 w-4" />
-                حفظ التغييرات
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ------------------ Appearance ------------------ */}
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <Palette className="inline ml-2" />
-                إعدادات المظهر
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex justify-between items-center">
-                <Label>الوضع الليلي</Label>
-                <Switch
-                  checked={form.dark_mode}
-                  onCheckedChange={(v) =>
-                    setForm({ ...form, dark_mode: v })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label>اللون الأساسي</Label>
-                <Input
-                  type="color"
-                  value={form.primary_color}
-                  onChange={(e) =>
-                    setForm({ ...form, primary_color: e.target.value })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label>اللون الثانوي</Label>
-                <Input
-                  type="color"
-                  value={form.secondary_color}
-                  onChange={(e) =>
-                    setForm({ ...form, secondary_color: e.target.value })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label>لون التمييز</Label>
-                <Input
-                  type="color"
-                  value={form.accent_color}
-                  onChange={(e) =>
-                    setForm({ ...form, accent_color: e.target.value })
-                  }
-                />
-              </div>
-
-              <Button onClick={handleSave} disabled={loading}>
-                <Save className="ml-2 h-4 w-4" />
-                حفظ التغييرات
-              </Button>
+              {canEdit && (
+                <Button onClick={handleSave} disabled={loading}>
+                  <Save className="ml-2 h-4 w-4" />
+                  حفظ التغييرات
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -302,17 +237,18 @@ const Settings = () => {
                   <Label>{label}</Label>
                   <Switch
                     checked={form[key as keyof typeof form] as boolean}
-                    onCheckedChange={(v) =>
-                      setForm({ ...form, [key]: v })
-                    }
+                    disabled={!canEdit || loading}
+                    onCheckedChange={(v) => setForm({ ...form, [key]: v })}
                   />
                 </div>
               ))}
 
-              <Button onClick={handleSave} disabled={loading}>
-                <Save className="ml-2 h-4 w-4" />
-                حفظ التغييرات
-              </Button>
+              {canEdit && (
+                <Button onClick={handleSave} disabled={loading}>
+                  <Save className="ml-2 h-4 w-4" />
+                  حفظ التغييرات
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

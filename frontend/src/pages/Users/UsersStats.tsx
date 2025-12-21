@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, Shield, UserCheck } from "lucide-react";
 import { User } from "@/api/users";
 import { Role } from "@/api/roles";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // واجهة الخصائص (Props) التي يتلقاها المكون
 interface UsersStatsProps {
@@ -12,6 +13,17 @@ interface UsersStatsProps {
 }
 
 export const UsersStats = ({ users, roles }: UsersStatsProps) => {
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
+  // إذا لم يكن لدى المستخدم صلاحية العرض، نعرض رسالة فقط
+  if (!hasPermission("users_view")) {
+    return (
+      <p className="text-center text-red-600 text-lg mt-10">
+        🚫 ليس لديك صلاحية عرض الإحصائيات
+      </p>
+    );
+  }
+
   // حساب عدد المشرفين (Admins)
   const adminCount = users.filter(user => 
     user.roles.some(role => role.name.toLowerCase() === 'admin' || role.name.toLowerCase() === 'super-admin')

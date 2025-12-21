@@ -31,15 +31,22 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
+  // =====================
+  // الحالة الابتدائية
+  // =====================
   user: null,
   token: localStorage.getItem("token"),
   loading: false,
   error: null,
 
+  // =====================
+  // تسجيل الدخول
+  // =====================
   login: async (email, password) => {
     set({ loading: true, error: null });
     try {
       const data = await apiLogin(email, password);
+
       set({
         user: data.user,
         token: data.token,
@@ -55,10 +62,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // =====================
+  // إنشاء حساب
+  // =====================
   register: async (name, email, password) => {
     set({ loading: true, error: null });
     try {
       const data = await apiRegister(name, email, password);
+
       set({
         user: data.user,
         token: data.token,
@@ -74,12 +85,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // =====================
+  // تسجيل الخروج
+  // =====================
   logout: async () => {
     set({ loading: true, error: null });
     try {
       await apiLogout();
       localStorage.removeItem("token");
-      set({ user: null, token: null, loading: false });
+
+      set({
+        user: null,
+        token: null,
+        loading: false,
+      });
     } catch (err: unknown) {
       const error = err as AxiosError<{ message: string }>;
       set({
@@ -90,27 +109,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // =====================
+  // جلب المستخدم بعد Refresh
+  // =====================
   fetchUser: async () => {
     set({ loading: true, error: null });
     try {
       const res = await getCurrentUser();
+
       set({
-        user: res.user,
+        user: res, // ✅ التصحيح هنا
         token: localStorage.getItem("token"),
         loading: false,
       });
-    } catch (err: unknown) {
-      const error = err as AxiosError<{ message: string }>;
+    } catch {
+      localStorage.removeItem("token");
       set({
         user: null,
         token: null,
         loading: false,
-        error: error.response?.data?.message || "انتهت الجلسة",
+        error: "انتهت الجلسة",
       });
     }
   },
 
-  // ✅ التابع المهم جدًا:
+  // =====================
+  // الصلاحيات
+  // =====================
   hasPermission: (permission: string) => {
     const user = get().user;
     if (!user) return false;

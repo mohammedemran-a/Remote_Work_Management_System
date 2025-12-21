@@ -8,30 +8,40 @@ import {
   updateUser,
   deleteUser,
   User,
-  UserPayload, // سنقوم بتعديل كيفية استخدامه
+  UserPayload,
 } from "@/api/users";
 import { getRoles, Role } from "@/api/roles";
+import { useAuthStore } from "@/store/useAuthStore";
 
 /* ================= TYPES ================= */
-
-// واجهة لبيانات النموذج (Form)
 export interface FormData {
   name: string;
   email: string;
   password: string;
   department: string;
-  roles: number[]; // النموذج الداخلي لا يزال يستخدم IDs لسهولة التعامل مع Checkboxes
+  roles: number[];
+}
+
+interface ApiError {
+  message?: string;
+  errors?: Record<string, string[]>;
 }
 
 /* ================= HOOK ================= */
-
 export const useUsersState = () => {
   const { toast } = useToast();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
+  // --- الصلاحيات ---
+  const canView = hasPermission("users_view");
+  const canCreate = hasPermission("users_create");
+  const canEdit = hasPermission("users_edit");
+  const canDelete = hasPermission("users_delete");
 
   // --- حالات البيانات ---
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  
+
   // --- حالات الواجهة ---
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,8 +59,8 @@ export const useUsersState = () => {
   });
 
   /* ============== DATA LOADING ============== */
-
   const loadData = useCallback(async () => {
+    if (!canView) return;
     setLoading(true);
     try {
       const [usersData, rolesData] = await Promise.all([
@@ -60,7 +70,7 @@ export const useUsersState = () => {
       setUsers(usersData);
       setRoles(rolesData);
     } catch (error: unknown) {
-      const err = error as { message: string };
+      const err = error as ApiError;
       toast({
         title: "خطأ في جلب البيانات",
         description: err.message || "فشل جلب المستخدمين أو الأدوار",
@@ -69,27 +79,26 @@ export const useUsersState = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, canView]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   /* ============== FILTERING ============== */
-
-  const filteredUsers = useMemo(() =>
-    (users || []).filter(
-      (user) =>
-        user && user.name && user.email && (
+  const filteredUsers = useMemo(
+    () =>
+      users.filter(
+        (user) =>
           user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (user.department && user.department.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-    ), [users, searchTerm]
+          (user.department &&
+            user.department.toLowerCase().includes(searchTerm.toLowerCase()))
+      ),
+    [users, searchTerm]
   );
 
   /* ============== DIALOG HANDLING ============== */
-
   const handleOpenDialog = (user?: User) => {
     if (user) {
       setSelectedUser(user);
@@ -98,7 +107,7 @@ export const useUsersState = () => {
         email: user.email,
         password: "",
         department: user.department || "",
-        roles: user.roles?.map(role => role.id) || [],
+        roles: user.roles?.map((r) => r.id) || [],
       });
     } else {
       setSelectedUser(null);
@@ -113,66 +122,88 @@ export const useUsersState = () => {
     setIsDialogOpen(true);
   };
 
-  /* ============== SAVE (CREATE/UPDATE) - (النسخة المصححة) ============== */
-
+  /* ============== SAVE (CREATE/UPDATE) ============== */
   const handleSaveUser = async () => {
-    if (!formData.name || !formData.email || (!selectedUser && !formData.password)) {
-      toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة", variant: "destructive" });
+    if (selectedUser && !canEdit) {
+      toast({ title: "🚫 ليس لديك صلاحية تعديل المستخدم", variant: "destructive" });
+      return;
+    }
+    if (!selectedUser && !canCreate) {
+      toast({ title: "🚫 ليس لديك صلاحية إضافة مستخدم جديد", variant: "destructive" });
       return;
     }
 
-    // 🟢 1. تحويل مصفوفة الـ IDs إلى مصفوفة من الأسماء
-    const roleNames = formData.roles.map(roleId => {
-      const role = roles.find(r => r.id === roleId);
-      return role ? role.name : '';
-    }).filter(Boolean); // لإزالة أي قيم فارغة في حالة عدم العثور على دور
+    if (!formData.name || !formData.email || (!selectedUser && !formData.password)) {
+      toast({
+        title: "خطأ",
+        description: "يرجى ملء الحقول المطلوبة",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // 🟢 2. بناء الحمولة (Payload) بالأسماء بدلاً من الـ IDs
-    const payload = {
+    const roleNames = formData.roles
+      .map((id) => roles.find((r) => r.id === id)?.name)
+      .filter(Boolean) as string[];
+
+    const payload: UserPayload = {
       name: formData.name,
       email: formData.email,
-      department: formData.department || undefined, // أرسل undefined إذا كان فارغًا
-      roles: roleNames, // ✅ إرسال مصفوفة الأسماء
-      password: formData.password || undefined, // أرسل undefined إذا كان فارغًا
+      department: formData.department || undefined,
+      roles: roleNames,
+      password: formData.password || undefined,
     };
 
     try {
       if (selectedUser) {
-        // لا نرسل كلمة المرور عند التحديث إلا إذا تم تغييرها
-        if (!payload.password) {
-          delete payload.password;
-        }
+        if (!payload.password) delete payload.password;
         await updateUser(selectedUser.id, payload);
         toast({ title: "تم التحديث", description: "تم تعديل المستخدم بنجاح" });
       } else {
-        await createUser(payload as UserPayload);
+        await createUser(payload);
         toast({ title: "تمت الإضافة", description: "تم إنشاء مستخدم جديد" });
       }
 
       setIsDialogOpen(false);
       await loadData();
-    } catch (error: any) {
-      const errorMessages = error.errors ? Object.values(error.errors).flat().join('\n') : (error.message || "فشل حفظ البيانات");
-      toast({ title: "حدث خطأ", description: errorMessages, variant: "destructive" });
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      const errorMessages = err.errors
+        ? Object.values(err.errors).flat().join("\n")
+        : err.message || "فشل حفظ البيانات";
+
+      toast({
+        title: "حدث خطأ",
+        description: errorMessages,
+        variant: "destructive",
+      });
     }
   };
 
   /* ============== DELETE ============== */
-
   const confirmDelete = async () => {
+    if (!canDelete) {
+      toast({ title: "🚫 ليس لديك صلاحية حذف المستخدم", variant: "destructive" });
+      return;
+    }
     if (!userToDelete) return;
+
     try {
       await deleteUser(userToDelete);
       toast({ title: "تم الحذف", description: "تم حذف المستخدم بنجاح" });
       await loadData();
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل حذف المستخدم", variant: "destructive" });
+    } catch (error: unknown) {
+      const err = error as ApiError;
+      toast({
+        title: "خطأ",
+        description: err.message || "فشل حذف المستخدم",
+        variant: "destructive",
+      });
     } finally {
       setUserToDelete(null);
     }
   };
 
-  // --- إرجاع كل ما تحتاجه المكونات ---
   return {
     loading,
     users,
@@ -190,5 +221,9 @@ export const useUsersState = () => {
     handleOpenDialog,
     handleSaveUser,
     confirmDelete,
+    canView,
+    canCreate,
+    canEdit,
+    canDelete,
   };
 };

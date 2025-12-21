@@ -11,46 +11,79 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import {
+  getAllNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification as apiDeleteNotification,
+  deleteAllNotifications as apiDeleteAllNotifications,
+} from "@/api/notifications";
 
 interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  type: "info" | "success" | "warning" | "error";
-  read: boolean;
-  time: string;
+  id: string;
+  data: {
+    title: string;
+    message: string;
+    type: "info" | "success" | "warning" | "error";
+  };
+  read_at: string | null;
+  created_at: string;
 }
 
 const NotificationSidebar = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    { id: 1, title: "مهمة جديدة", message: "تم تعيين مهمة جديدة لك", type: "info", read: false, time: "منذ 5 دقائق" },
-    { id: 2, title: "تم إكمال المشروع", message: "تم إكمال مشروع التصميم بنجاح", type: "success", read: false, time: "منذ ساعة" },
-    { id: 3, title: "تنبيه موعد", message: "اجتماع الفريق بعد 30 دقيقة", type: "warning", read: false, time: "منذ ساعتين" },
-    { id: 4, title: "رسالة جديدة", message: "لديك رسالة جديدة من أحمد", type: "info", read: true, time: "منذ 3 ساعات" },
-  ]);
+  /* =========================
+     Fetch Notifications
+  ========================= */
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["notifications"],
+    queryFn: getAllNotifications,
+    enabled: notificationsOpen, // فقط عند فتح الـ sidebar
+  });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.read_at).length;
 
-  const markAsRead = (id: number) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  };
+  /* =========================
+     Mutations
+  ========================= */
+  const markAsReadMutation = useMutation({
+    mutationFn: markNotificationAsRead,
+    onSuccess: (_, id: string) => {
+      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
+        old?.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n) || []
+      );
+    },
+  });
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const markAllAsReadMutation = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => {
+      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
+        old?.map(n => ({ ...n, read_at: new Date().toISOString() })) || []
+      );
+    },
+  });
 
-  const deleteNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  const deleteNotificationMutation = useMutation({
+    mutationFn: apiDeleteNotification,
+    onSuccess: (_, id: string) => {
+      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
+        old?.filter(n => n.id !== id) || []
+      );
+    },
+  });
 
-  const deleteAllNotifications = () => {
-    setNotifications([]);
-  };
+  const deleteAllNotificationsMutation = useMutation({
+    mutationFn: apiDeleteAllNotifications,
+    onSuccess: () => {
+      queryClient.setQueryData<Notification[]>(["notifications"], []);
+    },
+  });
 
   return (
     <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
@@ -85,7 +118,7 @@ const NotificationSidebar = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={markAllAsRead} 
+                onClick={() => markAllAsReadMutation.mutate()} 
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
                 تعليم الكل كمقروء
@@ -95,7 +128,7 @@ const NotificationSidebar = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={deleteAllNotifications} 
+                onClick={() => deleteAllNotificationsMutation.mutate()} 
                 className="text-xs text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-3 w-3 ml-1" />
@@ -116,34 +149,32 @@ const NotificationSidebar = () => {
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 transition-colors ${
-                    !notification.read ? 'bg-accent/30' : 'bg-background'
-                  }`}
+                  className={`p-4 transition-colors ${!notification.read_at ? 'bg-accent/30' : 'bg-background'}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm font-semibold ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                          {notification.title}
+                        <p className={`text-sm font-semibold ${!notification.read_at ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {notification.data.title}
                         </p>
-                        {!notification.read && (
+                        {!notification.read_at && (
                           <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {notification.message}
+                        {notification.data.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {notification.time}
+                        {notification.created_at}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {!notification.read && (
+                      {!notification.read_at && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={() => markAsReadMutation.mutate(notification.id)}
                           title="تعليم كمقروء"
                         >
                           <Check className="h-4 w-4" />
@@ -153,7 +184,7 @@ const NotificationSidebar = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={() => deleteNotificationMutation.mutate(notification.id)}
                         title="حذف"
                       >
                         <X className="h-4 w-4" />
