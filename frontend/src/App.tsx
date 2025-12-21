@@ -18,7 +18,7 @@ import Reports from "./pages/Reports/index";
 import Team from "./pages/Team/index";
 
 import Auth from "./pages/Auth";
-import Chat from "./pages/Chat";
+import Chat from "./pages/Chat/index";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import ChatRoom from "./pages/ChatRoom";

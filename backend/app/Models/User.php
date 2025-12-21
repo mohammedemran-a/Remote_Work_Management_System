@@ -63,5 +63,9 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
     
+public function conversations() {
+    return $this->belongsToMany(Conversation::class);
+}
+
 
 }
