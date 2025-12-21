@@ -24,6 +24,12 @@ class NotificationController extends Controller
         return response()->json(['message' => 'تم تعليم الإشعار كمقروء']);
     }
 
+    public function markAllAsRead()
+    {
+        auth()->user()->unreadNotifications->markAsRead();
+        return response()->json(['message' => 'تم تعليم جميع الإشعارات كمقروءة']);
+    }
+
     public function destroy($id)
     {
         $notification = auth()->user()->notifications()->findOrFail($id);
