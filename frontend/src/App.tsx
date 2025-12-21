@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 import { useAuthStore } from "@/store/useAuthStore";
@@ -21,7 +21,7 @@ import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 
 import Auth from "./pages/Auth";
-import Chat from "./pages/Chat/index";
+import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import ChatRoom from "./pages/ChatRoom";
@@ -30,33 +30,53 @@ import ActivityLogs from "./pages/ActivityLogs";
 import Notifications from "./pages/Notifications";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
-// import { SettingsProvider } from "@/context/SettingsContext";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const fetchUser = useAuthStore((state) => state.fetchUser);
+  const loading = useAuthStore((state) => state.loading);
+  const token = useAuthStore((state) => state.token);
 
-  // ✅ يتم التنفيذ مرة واحدة فقط عند تشغيل التطبيق
+  // ✅ جلب بيانات المستخدم مرة واحدة عند تشغيل التطبيق
   useEffect(() => {
-    if (localStorage.getItem("token")) {
+    if (token) {
       fetchUser();
     }
-  }, [fetchUser]);
+  }, [token, fetchUser]);
+
+  // ✅ انتظار تحميل المستخدم قبل عرض أي Routes
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-xl font-semibold">
+        جاري التحميل...
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* <SettingsProvider> */}
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <Toaster />
           <Sonner />
+
           <BrowserRouter>
             <Routes>
+              {/* الصفحة الرئيسية */}
               <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
 
-              <Route path="/" element={<Layout />}>
+              {/* صفحة تسجيل الدخول */}
+              <Route
+                path="/auth"
+                element={token ? <Navigate to="/dashboard" /> : <Auth />}
+              />
+
+              {/* الصفحات المحمية */}
+              <Route
+                path="/"
+                element={token ? <Layout /> : <Navigate to="/auth" />}
+              >
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="projects/:id" element={<ProjectDetails />} />
@@ -75,14 +95,15 @@ const App = () => {
                 <Route path="notifications" element={<Notifications />} />
               </Route>
 
+              {/* صفحة غير موجود */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
-      {/* </SettingsProvider> */}
     </QueryClientProvider>
   );
 };
 
 export default App;
+
