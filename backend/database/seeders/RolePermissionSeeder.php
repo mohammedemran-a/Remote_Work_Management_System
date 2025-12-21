@@ -29,6 +29,22 @@ class RolePermissionSeeder extends Seeder
             "notifications_delete",
             "settings_view",
             "settings_edit",
+            "projects_view",
+            "projects_create",
+            "projects_edit",
+            "projects_delete",
+            "tasks_view",
+            "tasks_create",
+            "tasks_edit",
+            "tasks_delete",
+             "calendar_view",
+            "calendar_create",
+            "calendar_edit",
+            "calendar_delete",
+            "files_view",
+            "files_create",
+            "files_edit",
+            "files_delete",
         ];
 
         // 🔹 إنشاء الصلاحيات

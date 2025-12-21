@@ -79,6 +79,28 @@ class AuthController extends Controller
     }
 
     // -----------------------------
+    // 🟢 بيانات المستخدم الحالي
+    // -----------------------------
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $user->load('roles', 'permissions');
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
+    }
+
+    // -----------------------------
     // 🔴 تسجيل الخروج
     // -----------------------------
     public function logout(Request $request)

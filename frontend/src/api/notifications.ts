@@ -1,5 +1,3 @@
-// src/api/notifications.ts
-
 import { api } from "./axios";
 
 // ---------------------------------------------
@@ -31,5 +29,21 @@ export const markNotificationAsRead = async (notificationId: string) => {
 // ---------------------------------------------
 export const markAllNotificationsAsRead = async () => {
   const response = await api.post("/notifications/read-all");
+  return response.data;
+};
+
+// ---------------------------------------------
+// Delete single notification
+// ---------------------------------------------
+export const deleteNotification = async (notificationId: string) => {
+  const response = await api.delete(`/notifications/${notificationId}`);
+  return response.data;
+};
+
+// ---------------------------------------------
+// Delete all notifications
+// ---------------------------------------------
+export const deleteAllNotifications = async () => {
+  const response = await api.delete("/notifications");
   return response.data;
 };

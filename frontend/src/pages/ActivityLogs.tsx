@@ -393,10 +393,10 @@ const ActivityLogs = () => {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent dir="rtl">
+                      <AlertDialogContent dir="rtl" className="text-right">
                         <AlertDialogHeader>
-                          <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                          <AlertDialogDescription>
+                          <AlertDialogTitle className="text-right">تأكيد الحذف</AlertDialogTitle>
+                          <AlertDialogDescription className="text-right">
                             هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن
                             هذا الإجراء.
                           </AlertDialogDescription>

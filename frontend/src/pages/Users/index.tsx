@@ -7,6 +7,7 @@ import { useUsersState } from "./useUsersState";
 import { UsersStats } from "./UsersStats";
 import { UsersTable } from "./UsersTable";
 import { UsersDialogs } from "./UsersDialogs";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const UsersPage = () => {
   // استدعاء الـ Hook الذي يحتوي على كل المنطق
@@ -29,6 +30,9 @@ const UsersPage = () => {
     confirmDelete,
   } = useUsersState();
 
+  // الحصول على دالة التحقق من الصلاحيات
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
   if (loading) {
     return <div className="text-center py-10">جاري تحميل البيانات...</div>;
   }
@@ -41,10 +45,14 @@ const UsersPage = () => {
           <h1 className="text-3xl font-bold">إدارة المستخدمين</h1>
           <p className="text-muted-foreground">إضافة وتعديل المستخدمين وتعيين الأدوار والأقسام.</p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <UserPlus className="ml-2 h-4 w-4" />
-          إضافة مستخدم
-        </Button>
+
+        {/* زر إضافة مستخدم يظهر فقط عند وجود صلاحية users_create */}
+        {hasPermission("users_create") && (
+          <Button onClick={() => handleOpenDialog()}>
+            <UserPlus className="ml-2 h-4 w-4" />
+            إضافة مستخدم
+          </Button>
+        )}
       </div>
 
       {/* ===== STATS CARDS ===== */}
