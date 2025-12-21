@@ -19,7 +19,11 @@ import {
 } from "@/components/ui/tabs";
 import { User, Mail, Lock, Upload, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getMyProfile, updateMyProfile } from "@/api/profile";
+import {
+  getMyProfile,
+  updateMyProfile,
+  updateAccount, // ✅ تمت الإضافة
+} from "@/api/profile";
 import { api } from "@/api/axios";
 import axios from "axios";
 
@@ -105,9 +109,16 @@ const Profile = () => {
     }
   };
 
-  // حفظ البيانات الشخصية
+  // ✅ حفظ البيانات الشخصية (الاسم + البريد + المسمى الوظيفي)
   const handleSave = async () => {
     try {
+      // 🔹 تحديث الاسم والبريد (users table)
+      await updateAccount({
+        name: profileData.name,
+        email: profileData.email,
+      });
+
+      // 🔹 تحديث بيانات البروفايل (profiles table)
       const res = await updateMyProfile({
         job_title: profileData.job_title,
       });
@@ -116,7 +127,7 @@ const Profile = () => {
 
       toast({
         title: "تم الحفظ بنجاح",
-        description: "تم تحديث معلومات الملف الشخصي بنجاح",
+        description: "تم تحديث معلومات الحساب بنجاح",
       });
     } catch (error) {
       toast({
@@ -126,7 +137,7 @@ const Profile = () => {
     }
   };
 
-  // تحديث كلمة المرور
+  // 🔒 تحديث كلمة المرور (بدون أي تعديل)
   const handlePasswordChange = async () => {
     try {
       await api.post(`/profile/password`, {
@@ -148,7 +159,10 @@ const Profile = () => {
     } catch (error: unknown) {
       let message = "فشل تحديث كلمة المرور";
       if (axios.isAxiosError(error)) {
-        message = error.response?.data?.error || error.response?.data?.message || message;
+        message =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          message;
       }
 
       toast({
@@ -220,7 +234,9 @@ const Profile = () => {
                 <span className="text-sm text-muted-foreground">الحالة:</span>
                 <span
                   className={`text-sm font-medium ${
-                    profileData.status === "active" ? "text-green-500" : "text-red-500"
+                    profileData.status === "active"
+                      ? "text-green-500"
+                      : "text-red-500"
                   }`}
                 >
                   {profileData.status === "active" ? "نشط" : "غير نشط"}
@@ -251,9 +267,12 @@ const Profile = () => {
                   <Label htmlFor="first-name">الاسم الكامل</Label>
                   <Input
                     id="first-name"
-                    value={profileData.name || ""}
+                    value={profileData.name}
                     onChange={(e) =>
-                      setProfileData({ ...profileData, name: e.target.value })
+                      setProfileData({
+                        ...profileData,
+                        name: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -266,9 +285,12 @@ const Profile = () => {
                   <Input
                     id="email"
                     type="email"
-                    value={profileData.email || ""}
+                    value={profileData.email}
                     onChange={(e) =>
-                      setProfileData({ ...profileData, email: e.target.value })
+                      setProfileData({
+                        ...profileData,
+                        email: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -341,7 +363,10 @@ const Profile = () => {
                   />
                 </div>
 
-                <Button onClick={handlePasswordChange} className="w-full sm:w-auto">
+                <Button
+                  onClick={handlePasswordChange}
+                  className="w-full sm:w-auto"
+                >
                   <Save className="ml-2 h-4 w-4" /> تحديث كلمة المرور
                 </Button>
               </TabsContent>

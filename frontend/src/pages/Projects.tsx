@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProjects, createProject, updateProject, deleteProject, ProjectPayload } from "@/api/project";
 import { useUsersStore } from "@/store/useUsersStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,8 @@ const Projects = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const hasPermission = useAuthStore(state => state.hasPermission);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
@@ -155,6 +158,7 @@ const Projects = () => {
   });
 
   const handleOpenDialog = (project?: Project) => {
+    if (!hasPermission(selectedProject ? "projects_edit" : "projects_create") && !project) return;
     if (project) {
       setSelectedProject(project);
       setFormData({
@@ -198,13 +202,16 @@ const Projects = () => {
     };
 
     if (selectedProject) {
+      if (!hasPermission("projects_edit")) return;
       updateMutation.mutate({ id: selectedProject.id, data: payload });
     } else {
+      if (!hasPermission("projects_create")) return;
       createMutation.mutate(payload);
     }
   };
 
   const handleDeleteProject = (projectId: number) => {
+    if (!hasPermission("projects_delete")) return;
     setProjectToDelete(projectId);
     setIsDeleteDialogOpen(true);
   };
@@ -226,18 +233,25 @@ const Projects = () => {
   if (isLoading || usersLoading) return <p>جارٍ تحميل المشاريع والمستخدمين...</p>;
   if (isError) return <p>حدث خطأ أثناء جلب المشاريع.</p>;
 
+  // صلاحية العرض
+  if (!hasPermission("projects_view")) {
+    return <p className="text-center py-12">🚫 ليس لديك صلاحية عرض المشاريع</p>;
+  }
+
   return (
     <div className="space-y-8" dir="rtl">
       {/* العنوان + زر إضافة مشروع */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">المشاريع</h1>
-          <p className="text-lg text-muted-foreground">إدارة وتتبع جميع مشاريع الشركة</p>
+      {hasPermission("projects_create") && (
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold text-foreground">المشاريع</h1>
+            <p className="text-lg text-muted-foreground">إدارة وتتبع جميع مشاريع الشركة</p>
+          </div>
+          <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4" /> مشروع جديد
+          </Button>
         </div>
-        <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4" /> مشروع جديد
-        </Button>
-      </div>
+      )}
 
       {/* فلاتر البحث */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -280,18 +294,24 @@ const Projects = () => {
                   <CardTitle className="text-lg">{project.name}</CardTitle>
                   <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleOpenDialog(project)}>تعديل</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>عرض التفاصيل</DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProject(project.id)}>حذف</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {(hasPermission("projects_edit") || hasPermission("projects_delete")) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {hasPermission("projects_edit") && (
+                        <DropdownMenuItem onClick={() => handleOpenDialog(project)}>تعديل</DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}`)}>عرض التفاصيل</DropdownMenuItem>
+                      {hasPermission("projects_delete") && (
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProject(project.id)}>حذف</DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </CardHeader>
 
@@ -352,7 +372,6 @@ const Projects = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* نموذج الحقول كما في كودك الأصلي */}
             <div className="space-y-2">
               <Label htmlFor="name">اسم المشروع *</Label>
               <Input

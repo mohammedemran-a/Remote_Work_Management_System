@@ -6,7 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 class TeamMember extends Model
 {
     use HasFactory;
-    protected $guarded = [];
+        protected $fillable = [
+        'user_id',
+        'phone',
+        'location',
+        'join_date',
+        'status',
+        'tasks_completed',
+        'tasks_in_progress',
+        'efficiency',
+        'last_active',
+    ];
 
     public function user()
     {

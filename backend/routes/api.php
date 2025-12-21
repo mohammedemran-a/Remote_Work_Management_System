@@ -61,10 +61,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/project-files', ProjectFileController::class)->except(['update']);
     Route::post('/project-files/{id}', [ProjectFileController::class, 'update']); // لتصحيح مشكلة FormData مع PUT
 
-    // --- الملف الشخصي ---
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile/me', [ProfileController::class, 'me']);
+    Route::post('/profile/account', [ProfileController::class, 'updateAccount']);
     Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
     Route::post('/profile/password', [ProfileController::class, 'updatePassword']);
+});
 
     // --- الإعدادات ---
     Route::get('/settings', [SettingController::class, 'index']);
