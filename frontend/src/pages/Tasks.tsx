@@ -1,8 +1,10 @@
+
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getTasks, createTask, updateTask, deleteTask, TaskPayload, TaskResponse } from "@/api/task";
 import { getProjects, ProjectPayload } from "@/api/project";
 import { useUsersStore } from "@/store/useUsersStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Kanban, MoreVertical, CheckCircle2, Clock, AlertTriangle, Calendar, User as UserIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
-const Tasks= () => {
+const Tasks = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { users, loadUsers } = useUsersStore();
+  const { hasPermission } = useAuthStore();
 
   const [projects, setProjects] = useState<(ProjectPayload & { id: number })[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,8 +41,12 @@ const Tasks= () => {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
-  // ✅ جلب المهام
-  const { data: tasks = [] } = useQuery<TaskResponse[]>({ queryKey: ["tasks"], queryFn: getTasks });
+  // ✅ جلب المهام (يعرض فقط إذا كانت لدى المستخدم صلاحية)
+  const { data: tasks = [] } = useQuery<TaskResponse[]>({
+    queryKey: ["tasks"],
+    queryFn: getTasks,
+    enabled: hasPermission("tasks_view")
+  });
 
   // ✅ جلب المشاريع
   useEffect(() => {
@@ -155,12 +162,21 @@ const Tasks= () => {
 
   const handleSubmit = () => {
     if (editId) {
+      if (!hasPermission("tasks_edit")) return toast({ title: "خطأ", description: "لا تمتلك صلاحية تعديل المهام", variant: "destructive" });
       updateMutation.mutate({ id: editId, data: form });
     } else {
+      if (!hasPermission("tasks_create")) return toast({ title: "خطأ", description: "لا تمتلك صلاحية إنشاء المهام", variant: "destructive" });
       createMutation.mutate(form);
     }
   };
-  
+
+  // إذا لم يكن لدى المستخدم صلاحية عرض المهام
+  if (!hasPermission("tasks_view")) {
+    return <div className="text-center py-12 text-muted-foreground">
+      <h3 className="text-lg font-medium">لا تمتلك صلاحية عرض المهام</h3>
+    </div>;
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* العنوان وأزرار العرض */}
@@ -169,11 +185,13 @@ const Tasks= () => {
           <h1 className="text-3xl font-bold">المهام</h1>
           <p className="text-muted-foreground">إدارة جميع المهام</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant={viewMode === "kanban" ? "default" : "outline"} onClick={() => setViewMode("kanban")}><Kanban className="w-4 h-4" /></Button>
-          <Button variant={viewMode === "list" ? "default" : "outline"} onClick={() => setViewMode("list")}>قائمة</Button>
-          <Button onClick={openCreate}><Plus className="w-4 h-4 ml-1" />مهمة جديدة</Button>
-        </div>
+        {hasPermission("tasks_create") && (
+          <div className="flex gap-2">
+            <Button variant={viewMode === "kanban" ? "default" : "outline"} onClick={() => setViewMode("kanban")}><Kanban className="w-4 h-4" /></Button>
+            <Button variant={viewMode === "list" ? "default" : "outline"} onClick={() => setViewMode("list")}>قائمة</Button>
+            <Button onClick={openCreate}><Plus className="w-4 h-4 ml-1" />مهمة جديدة</Button>
+          </div>
+        )}
       </div>
 
       {/* البحث + فلترة */}
@@ -214,17 +232,16 @@ const Tasks= () => {
                         <UserIcon className="w-3 h-3" /> {users.find(u => u.id === task.assigned_to)?.name ?? "غير محدد"}
                         <Calendar className="w-3 h-3 ml-1" /> {task.due_date}
                       </div>
-                      
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(task)}>تعديل</DropdownMenuItem>
-                        <DropdownMenuItem>تعيين</DropdownMenuItem>
-                        <DropdownMenuItem>إضافة تعليق</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(task.id)}>حذف</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {(hasPermission("tasks_edit") || hasPermission("tasks_delete")) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {hasPermission("tasks_edit") && <DropdownMenuItem onClick={() => openEdit(task)}>تعديل</DropdownMenuItem>}
+                          {hasPermission("tasks_delete") && <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(task.id)}>حذف</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -272,17 +289,19 @@ const Tasks= () => {
               </div>
 
               {/* قائمة الخيارات */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openEdit(task)}>تعديل</DropdownMenuItem>
-                  <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(task.id)}>حذف</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {(hasPermission("tasks_edit") || hasPermission("tasks_delete")) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {hasPermission("tasks_edit") && <DropdownMenuItem onClick={() => openEdit(task)}>تعديل</DropdownMenuItem>}
+                    {hasPermission("tasks_delete") && <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(task.id)}>حذف</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -340,9 +359,9 @@ const Tasks= () => {
             </div>
             <div><Label>تاريخ التسليم</Label><Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>
           </div>
-          <DialogFooter>
+                    <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-            <Button onClick={handleSubmit}>حفظ</Button>
+            <Button onClick={handleSubmit}>{editId ? "تحديث" : "حفظ"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -352,16 +371,21 @@ const Tasks= () => {
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right">هل أنت متأكد؟</AlertDialogTitle>
-
             <AlertDialogDescription className="text-right">
               سيتم حذف المهمة نهائيًا ولا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
           <AlertDialogFooter className="flex-row-reverse gap-2">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              onClick={() => {
+                if (hasPermission("tasks_delete") && deleteId) {
+                  deleteMutation.mutate(deleteId);
+                } else {
+                  toast({ title: "خطأ", description: "لا تمتلك صلاحية حذف المهام", variant: "destructive" });
+                  setDeleteId(null);
+                }
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               حذف
@@ -372,6 +396,6 @@ const Tasks= () => {
 
     </div>
   );
-}
+};
 
 export default Tasks;

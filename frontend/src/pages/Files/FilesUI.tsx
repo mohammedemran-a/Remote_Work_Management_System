@@ -51,7 +51,6 @@ interface Props {
   handleDeleteFile: (id: number) => void;
   downloadFile: (id: number, name: string) => void;
   hasPermission: (permission: string) => boolean;
-  userProjects: number[]; // مشاريع المستخدم
 }
 
 /* ================= Helpers ================= */
@@ -132,27 +131,19 @@ const FilesUI = ({
   handleDeleteFile,
   downloadFile,
   hasPermission,
-  userProjects,
 }: Props) => {
   /* 🔐 Page Guard */
   if (!loading && !hasPermission("files_view")) {
     return (
       <div className="text-center py-12">
         <Lock className="mx-auto h-12 w-12 text-destructive" />
-        <h3 className="mt-4 text-lg font-medium text-destructive">
-          غير مصرح لك
-        </h3>
+        <h3 className="mt-4 text-lg font-medium text-destructive">غير مصرح لك</h3>
         <p className="mt-2 text-muted-foreground">
           ليس لديك الصلاحية اللازمة لعرض هذه الصفحة
         </p>
       </div>
     );
   }
-
-  // 🔹 فلترة الملفات حسب مشاريع المستخدم
-  const visibleFiles = filteredFiles.filter(
-    (file) => !file.project || userProjects.includes(file.project.id)
-  );
 
   return (
     <>
@@ -182,10 +173,7 @@ const FilesUI = ({
 
           {/* Upload Permission */}
           {hasPermission("files_create") && (
-            <Button
-              className="flex items-center gap-2"
-              onClick={() => handleOpenDialog()}
-            >
+            <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
               <Upload className="h-4 w-4" />
               رفع ملف
             </Button>
@@ -197,7 +185,7 @@ const FilesUI = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{visibleFiles.length}</p>
+            <p className="text-2xl font-bold">{files.length}</p>
             <p className="text-sm text-muted-foreground">إجمالي الملفات</p>
           </CardContent>
         </Card>
@@ -210,7 +198,7 @@ const FilesUI = ({
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">
-              {visibleFiles.filter((f) => f.shared).length}
+              {files.filter((f) => f.shared).length}
             </p>
             <p className="text-sm text-muted-foreground">ملفات مشتركة</p>
           </CardContent>
@@ -218,7 +206,7 @@ const FilesUI = ({
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">
-              {visibleFiles.reduce((sum, f) => sum + f.downloads, 0)}
+              {files.reduce((sum, f) => sum + f.downloads, 0)}
             </p>
             <p className="text-sm text-muted-foreground">إجمالي التحميلات</p>
           </CardContent>
@@ -252,16 +240,12 @@ const FilesUI = ({
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="text-center py-10 text-muted-foreground">
-          جاري تحميل الملفات...
-        </div>
-      )}
+      {loading && <div className="text-center py-10 text-muted-foreground">جاري تحميل الملفات...</div>}
 
       {/* Grid View */}
       {!loading && viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {visibleFiles.map((file) => (
+          {filteredFiles.map((file) => (
             <Card key={file.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
@@ -269,9 +253,7 @@ const FilesUI = ({
                     {getFileIcon(file.type)}
                     <div>
                       <h4 className="font-medium text-sm truncate">{file.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {formatSize(file.size)}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
                     </div>
                   </div>
 
@@ -283,16 +265,12 @@ const FilesUI = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => downloadFile(file.id, file.name)}
-                        >
+                        <DropdownMenuItem onClick={() => downloadFile(file.id, file.name)}>
                           <Download className="ml-2 h-4 w-4" /> تحميل
                         </DropdownMenuItem>
 
                         {hasPermission("files_edit") && (
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDialog(file)}
-                          >
+                          <DropdownMenuItem onClick={() => handleOpenDialog(file)}>
                             تعديل البيانات
                           </DropdownMenuItem>
                         )}
@@ -346,13 +324,11 @@ const FilesUI = ({
       )}
 
       {/* Empty */}
-      {!loading && visibleFiles.length === 0 && (
+      {!loading && filteredFiles.length === 0 && (
         <div className="text-center py-12">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">لا توجد ملفات</h3>
-          <p className="mt-2 text-muted-foreground">
-            لم يتم العثور على ملفات تطابق البحث أو مشاريعك
-          </p>
+          <p className="mt-2 text-muted-foreground">لم يتم العثور على ملفات تطابق البحث</p>
         </div>
       )}
     </>

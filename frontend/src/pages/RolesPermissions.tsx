@@ -22,9 +22,14 @@ import {
 } from "@/components/ui/dialog";
 import { Shield, Plus, Edit, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getRoles, getPermissions, createRole, deleteRole } from "@/api/roles";
+import {
+  getRoles,
+  getPermissions,
+  createRole,
+  deleteRole,
+  updateRole, // ← تأكد من استيراده من api
+} from "@/api/roles";
 
-// استيراد ترجمات الصلاحيات
 import permissionsTranslation from "@/lang/permissions.json";
 
 interface Role {
@@ -47,6 +52,7 @@ const RolesPermissions = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
+  const [editingRole, setEditingRole] = useState<Role | null>(null); // ← الدور الجاري تعديله
 
   const getCategoryFromPermission = (perm: string): string => {
     if (perm.startsWith("dashboard")) return "لوحة التحكم";
@@ -120,9 +126,20 @@ const RolesPermissions = () => {
       });
       return;
     }
+
     try {
-      await createRole({ name: newRoleName, permissions: newRolePermissions });
-      toast({ title: "تم الحفظ", description: "تم حفظ الدور وصلاحياته بنجاح" });
+      if (editingRole) {
+        await updateRole(editingRole.id, {
+          name: newRoleName,
+          permissions: newRolePermissions,
+        });
+        toast({ title: "تم التعديل", description: "تم تعديل الدور بنجاح" });
+        setEditingRole(null);
+      } else {
+        await createRole({ name: newRoleName, permissions: newRolePermissions });
+        toast({ title: "تم الحفظ", description: "تم حفظ الدور وصلاحياته بنجاح" });
+      }
+
       setIsDialogOpen(false);
       setNewRoleName("");
       setNewRolePermissions([]);
@@ -158,26 +175,22 @@ const RolesPermissions = () => {
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            الأدوار والصلاحيات
-          </h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">الأدوار والصلاحيات</h1>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { 
+            if(!open) setEditingRole(null);
+            setIsDialogOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="ml-2 h-4 w-4" />
-              إضافة دور جديد
+              {editingRole ? "تعديل الدور" : "إضافة دور جديد"}
             </Button>
           </DialogTrigger>
 
-          <DialogContent
-            className="max-w-3xl max-h-[80vh] overflow-y-auto"
-            dir="rtl"
-          >
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" dir="rtl">
             <DialogHeader>
-              <DialogTitle>إضافة دور جديد</DialogTitle>
+              <DialogTitle>{editingRole ? "تعديل الدور" : "إضافة دور جديد"}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-6 py-4">
@@ -203,23 +216,13 @@ const RolesPermissions = () => {
                         {permissions
                           .filter((p) => p.category === category)
                           .map((permission) => (
-                            <div
-                              key={permission.name}
-                              className="flex items-center space-x-2 space-x-reverse"
-                            >
+                            <div key={permission.name} className="flex items-center space-x-2 space-x-reverse">
                               <Checkbox
                                 id={permission.name}
-                                checked={newRolePermissions.includes(
-                                  permission.name
-                                )}
-                                onCheckedChange={() =>
-                                  togglePermission(permission.name)
-                                }
+                                checked={newRolePermissions.includes(permission.name)}
+                                onCheckedChange={() => togglePermission(permission.name)}
                               />
-                              <label
-                                htmlFor={permission.name}
-                                className="text-sm font-medium leading-none cursor-pointer"
-                              >
+                              <label htmlFor={permission.name} className="text-sm font-medium leading-none cursor-pointer">
                                 {permission.label}
                               </label>
                             </div>
@@ -232,15 +235,18 @@ const RolesPermissions = () => {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => { setIsDialogOpen(false); setEditingRole(null); }}>
                 إلغاء
               </Button>
-              <Button onClick={handleSaveRole}>حفظ الدور</Button>
+              <Button onClick={handleSaveRole}>
+                {editingRole ? "حفظ التعديل" : "حفظ الدور"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* جدول الأدوار */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -248,7 +254,6 @@ const RolesPermissions = () => {
             الأدوار المتاحة
           </CardTitle>
         </CardHeader>
-
         <CardContent>
           <Table>
             <TableHeader>
@@ -261,7 +266,6 @@ const RolesPermissions = () => {
                 <TableHead className="text-right">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
-
             <TableBody>
               {roles.map((role) => (
                 <TableRow key={role.id}>
@@ -273,7 +277,17 @@ const RolesPermissions = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon">
+                      {/* زر التعديل */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingRole(role);
+                          setNewRoleName(role.name);
+                          setNewRolePermissions(role.permissions);
+                          setIsDialogOpen(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -292,11 +306,11 @@ const RolesPermissions = () => {
         </CardContent>
       </Card>
 
+      {/* جدول الصلاحيات */}
       <Card>
         <CardHeader>
           <CardTitle>جدول الصلاحيات</CardTitle>
         </CardHeader>
-
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -310,13 +324,10 @@ const RolesPermissions = () => {
                   ))}
                 </TableRow>
               </TableHeader>
-
               <TableBody>
                 {permissions.map((permission) => (
                   <TableRow key={permission.name}>
-                    <TableCell className="font-medium">
-                      {permission.label}
-                    </TableCell>
+                    <TableCell className="font-medium">{permission.label}</TableCell>
                     {roles.map((role) => (
                       <TableCell key={role.id} className="text-center">
                         {role.permissions.includes("all") ||
