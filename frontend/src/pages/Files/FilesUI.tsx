@@ -18,6 +18,7 @@ import {
   List,
   Calendar,
   User,
+  Lock,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { ProjectFile } from "@/api/projectFiles";
 
+/* ================= Permissions Props ================= */
 interface Props {
   searchTerm: string;
   setSearchTerm: (v: string) => void;
@@ -48,8 +50,11 @@ interface Props {
   handleOpenDialog: (file?: ProjectFile) => void;
   handleDeleteFile: (id: number) => void;
   downloadFile: (id: number, name: string) => void;
+  hasPermission: (permission: string) => boolean;
+  userProjects: number[]; // مشاريع المستخدم
 }
 
+/* ================= Helpers ================= */
 const getFileIcon = (type: string) => {
   switch (type) {
     case "pdf":
@@ -111,6 +116,7 @@ const formatSize = (size: number) => {
   return `${(size / 1024 / 1024).toFixed(2)} MB`;
 };
 
+/* ================= Component ================= */
 const FilesUI = ({
   searchTerm,
   setSearchTerm,
@@ -125,7 +131,29 @@ const FilesUI = ({
   handleOpenDialog,
   handleDeleteFile,
   downloadFile,
+  hasPermission,
+  userProjects,
 }: Props) => {
+  /* 🔐 Page Guard */
+  if (!loading && !hasPermission("files_view")) {
+    return (
+      <div className="text-center py-12">
+        <Lock className="mx-auto h-12 w-12 text-destructive" />
+        <h3 className="mt-4 text-lg font-medium text-destructive">
+          غير مصرح لك
+        </h3>
+        <p className="mt-2 text-muted-foreground">
+          ليس لديك الصلاحية اللازمة لعرض هذه الصفحة
+        </p>
+      </div>
+    );
+  }
+
+  // 🔹 فلترة الملفات حسب مشاريع المستخدم
+  const visibleFiles = filteredFiles.filter(
+    (file) => !file.project || userProjects.includes(file.project.id)
+  );
+
   return (
     <>
       {/* Header */}
@@ -151,13 +179,17 @@ const FilesUI = ({
           >
             <List className="h-4 w-4" />
           </Button>
-          <Button
-            className="flex items-center gap-2"
-            onClick={() => handleOpenDialog()}
-          >
-            <Upload className="h-4 w-4" />
-            رفع ملف
-          </Button>
+
+          {/* Upload Permission */}
+          {hasPermission("files_create") && (
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => handleOpenDialog()}
+            >
+              <Upload className="h-4 w-4" />
+              رفع ملف
+            </Button>
+          )}
         </div>
       </div>
 
@@ -165,7 +197,7 @@ const FilesUI = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{files.length}</p>
+            <p className="text-2xl font-bold">{visibleFiles.length}</p>
             <p className="text-sm text-muted-foreground">إجمالي الملفات</p>
           </CardContent>
         </Card>
@@ -178,7 +210,7 @@ const FilesUI = ({
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">
-              {files.filter((f) => f.shared).length}
+              {visibleFiles.filter((f) => f.shared).length}
             </p>
             <p className="text-sm text-muted-foreground">ملفات مشتركة</p>
           </CardContent>
@@ -186,7 +218,7 @@ const FilesUI = ({
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">
-              {files.reduce((sum, f) => sum + f.downloads, 0)}
+              {visibleFiles.reduce((sum, f) => sum + f.downloads, 0)}
             </p>
             <p className="text-sm text-muted-foreground">إجمالي التحميلات</p>
           </CardContent>
@@ -226,53 +258,60 @@ const FilesUI = ({
         </div>
       )}
 
-      {/* Files View */}
-      {!loading && viewMode === "grid" ? (
+      {/* Grid View */}
+      {!loading && viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredFiles.map((file) => (
+          {visibleFiles.map((file) => (
             <Card key={file.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex gap-3">
                     {getFileIcon(file.type)}
                     <div>
-                      <h4 className="font-medium text-sm truncate">
-                        {file.name}
-                      </h4>
+                      <h4 className="font-medium text-sm truncate">{file.name}</h4>
                       <p className="text-xs text-muted-foreground">
                         {formatSize(file.size)}
                       </p>
                     </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => downloadFile(file.id, file.name)}
-                      >
-                        <Download className="ml-2 h-4 w-4" />
-                        تحميل
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenDialog(file)}>
-                        تعديل البيانات
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Share className="ml-2 h-4 w-4" />
-                        مشاركة
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDeleteFile(file.id)}
-                      >
-                        حذف
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {(hasPermission("files_edit") || hasPermission("files_delete")) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => downloadFile(file.id, file.name)}
+                        >
+                          <Download className="ml-2 h-4 w-4" /> تحميل
+                        </DropdownMenuItem>
+
+                        {hasPermission("files_edit") && (
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDialog(file)}
+                          >
+                            تعديل البيانات
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem>
+                          <Share className="ml-2 h-4 w-4" /> مشاركة
+                        </DropdownMenuItem>
+
+                        {hasPermission("files_delete") && (
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDeleteFile(file.id)}
+                          >
+                            حذف
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -295,7 +334,6 @@ const FilesUI = ({
                     <Download className="h-3 w-3" />
                     {file.downloads} تحميل
                   </div>
-
                   <div className="flex items-center gap-1">
                     <FolderOpen className="h-3 w-3" />
                     {file.project?.name || "بدون مشروع"}
@@ -305,15 +343,15 @@ const FilesUI = ({
             </Card>
           ))}
         </div>
-      ) : null}
+      )}
 
-      {/* Empty State */}
-      {!loading && filteredFiles.length === 0 && (
+      {/* Empty */}
+      {!loading && visibleFiles.length === 0 && (
         <div className="text-center py-12">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">لا توجد ملفات</h3>
           <p className="mt-2 text-muted-foreground">
-            لم يتم العثور على ملفات تطابق البحث
+            لم يتم العثور على ملفات تطابق البحث أو مشاريعك
           </p>
         </div>
       )}

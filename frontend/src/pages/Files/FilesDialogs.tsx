@@ -73,6 +73,8 @@ interface Props {
 
   handleSaveFile: () => void;
   confirmDelete: () => void;
+
+  hasPermission: (permission: string) => boolean; // 👈 أضيفت فقط
 }
 
 // =============================
@@ -90,12 +92,10 @@ const FilesDialogs = ({
   setUploadedFile,
   handleSaveFile,
   confirmDelete,
+  hasPermission,
 }: Props) => {
   const [projects, setProjects] = useState<Project[]>([]);
 
-  // ================
-  // Fetch Projects
-  // ================
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -107,6 +107,11 @@ const FilesDialogs = ({
     };
     fetchProjects();
   }, []);
+
+  // 🔐 صلاحيات الحفظ
+  const isSaveDisabled = selectedFile
+    ? !hasPermission("files_edit")
+    : !hasPermission("files_create");
 
   return (
     <>
@@ -131,6 +136,7 @@ const FilesDialogs = ({
                 <Label>الملف *</Label>
                 <Input
                   type="file"
+                  disabled={!hasPermission("files_create")}
                   onChange={(e) =>
                     e.target.files && setUploadedFile(e.target.files[0])
                   }
@@ -143,6 +149,7 @@ const FilesDialogs = ({
               <Label>اسم الملف *</Label>
               <Input
                 value={formData.name}
+                disabled={isSaveDisabled}
                 onChange={(e) => setFormData({ name: e.target.value })}
               />
             </div>
@@ -152,6 +159,7 @@ const FilesDialogs = ({
               <Label>نوع الملف</Label>
               <Select
                 value={formData.type}
+                disabled={isSaveDisabled}
                 onValueChange={(value) => setFormData({ type: value })}
               >
                 <SelectTrigger>
@@ -175,6 +183,7 @@ const FilesDialogs = ({
               <Label>المشروع *</Label>
               <Select
                 value={formData.project_id.toString()}
+                disabled={isSaveDisabled}
                 onValueChange={(value) =>
                   setFormData({ project_id: Number(value) })
                 }
@@ -196,10 +205,9 @@ const FilesDialogs = ({
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
+                disabled={isSaveDisabled}
                 checked={formData.shared}
-                onChange={(e) =>
-                  setFormData({ shared: e.target.checked })
-                }
+                onChange={(e) => setFormData({ shared: e.target.checked })}
               />
               <Label>مشاركة الملف مع الفريق</Label>
             </div>
@@ -209,7 +217,9 @@ const FilesDialogs = ({
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveFile}>
+
+            {/* 🔐 زر الحفظ */}
+            <Button onClick={handleSaveFile} disabled={isSaveDisabled}>
               {selectedFile ? "حفظ التعديلات" : "رفع الملف"}
             </Button>
           </DialogFooter>
@@ -230,7 +240,12 @@ const FilesDialogs = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>
+
+            {/* 🔐 زر الحذف */}
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={!hasPermission("files_delete")}
+            >
               حذف
             </AlertDialogAction>
           </AlertDialogFooter>
