@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Bell, Menu, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import defaultLogo from "@/assets/Logo.jpg";
@@ -112,20 +111,6 @@ const Header = () => {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-reverse space-x-3">
             <ThemeToggle />
-
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative hover:bg-primary/10 transition-all duration-300"
-                onClick={() => navigate("/notifications")}
-              >
-                <Bell className="h-5 w-5 transition-transform duration-300 hover:scale-110" />
-                <Badge className="absolute -top-1 -left-1 h-5 w-5 flex items-center justify-center p-0 text-xs animate-pulse">
-                  3
-                </Badge>
-              </Button>
-            )}
 
             {isAuthenticated ? (
               <Button
