@@ -43,10 +43,10 @@ const NotificationSidebar = () => {
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["notifications"],
     queryFn: getAllNotifications,
-    enabled: notificationsOpen, // فقط عند فتح الـ sidebar
+    refetchInterval: 3000, // كل 3 ثواني
   });
 
-  const unreadCount = notifications.filter(n => !n.read_at).length;
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   /* =========================
      Mutations
@@ -54,8 +54,12 @@ const NotificationSidebar = () => {
   const markAsReadMutation = useMutation({
     mutationFn: markNotificationAsRead,
     onSuccess: (_, id: string) => {
-      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
-        old?.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n) || []
+      queryClient.setQueryData<Notification[]>(
+        ["notifications"],
+        (old) =>
+          old?.map((n) =>
+            n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+          ) || []
       );
     },
   });
@@ -63,8 +67,10 @@ const NotificationSidebar = () => {
   const markAllAsReadMutation = useMutation({
     mutationFn: markAllNotificationsAsRead,
     onSuccess: () => {
-      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
-        old?.map(n => ({ ...n, read_at: new Date().toISOString() })) || []
+      queryClient.setQueryData<Notification[]>(
+        ["notifications"],
+        (old) =>
+          old?.map((n) => ({ ...n, read_at: new Date().toISOString() })) || []
       );
     },
   });
@@ -72,8 +78,9 @@ const NotificationSidebar = () => {
   const deleteNotificationMutation = useMutation({
     mutationFn: apiDeleteNotification,
     onSuccess: (_, id: string) => {
-      queryClient.setQueryData<Notification[]>(["notifications"], (old) =>
-        old?.filter(n => n.id !== id) || []
+      queryClient.setQueryData<Notification[]>(
+        ["notifications"],
+        (old) => old?.filter((n) => n.id !== id) || []
       );
     },
   });
@@ -88,11 +95,7 @@ const NotificationSidebar = () => {
   return (
     <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-        >
+        <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge className="absolute -top-1 -left-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
@@ -105,7 +108,9 @@ const NotificationSidebar = () => {
         <SheetHeader className="p-4 border-b border-border">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
-              <SheetTitle className="text-lg font-semibold">الإشعارات</SheetTitle>
+              <SheetTitle className="text-lg font-semibold">
+                الإشعارات
+              </SheetTitle>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {unreadCount} جديد
@@ -115,20 +120,20 @@ const NotificationSidebar = () => {
           </div>
           <div className="flex items-center justify-between mt-3">
             {unreadCount > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => markAllAsReadMutation.mutate()} 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => markAllAsReadMutation.mutate()}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
                 تعليم الكل كمقروء
               </Button>
             )}
             {notifications.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => deleteAllNotificationsMutation.mutate()} 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteAllNotificationsMutation.mutate()}
                 className="text-xs text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-3 w-3 ml-1" />
@@ -137,7 +142,7 @@ const NotificationSidebar = () => {
             )}
           </div>
         </SheetHeader>
-        
+
         <ScrollArea className="h-[calc(100vh-180px)]">
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
@@ -149,12 +154,20 @@ const NotificationSidebar = () => {
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 transition-colors ${!notification.read_at ? 'bg-accent/30' : 'bg-background'}`}
+                  className={`p-4 transition-colors ${
+                    !notification.read_at ? "bg-accent/30" : "bg-background"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm font-semibold ${!notification.read_at ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <p
+                          className={`text-sm font-semibold ${
+                            !notification.read_at
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                        >
                           {notification.data.title}
                         </p>
                         {!notification.read_at && (
@@ -174,7 +187,9 @@ const NotificationSidebar = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => markAsReadMutation.mutate(notification.id)}
+                          onClick={() =>
+                            markAsReadMutation.mutate(notification.id)
+                          }
                           title="تعليم كمقروء"
                         >
                           <Check className="h-4 w-4" />
@@ -184,7 +199,9 @@ const NotificationSidebar = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => deleteNotificationMutation.mutate(notification.id)}
+                        onClick={() =>
+                          deleteNotificationMutation.mutate(notification.id)
+                        }
                         title="حذف"
                       >
                         <X className="h-4 w-4" />
@@ -196,7 +213,7 @@ const NotificationSidebar = () => {
             </div>
           )}
         </ScrollArea>
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-background">
           <Button
             variant="ghost"

@@ -57,9 +57,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/team-members', TeamController::class);
 
     // --- ملفات المشاريع ---
-    Route::get('/project-files/download/{id}', [ProjectFileController::class, 'download']);
-    Route::apiResource('/project-files', ProjectFileController::class)->except(['update']);
-    Route::post('/project-files/{id}', [ProjectFileController::class, 'update']); // لتصحيح مشكلة FormData مع PUT
+Route::get('/project-files/{id}/download', [ProjectFileController::class, 'download']);
+
+Route::apiResource('/project-files', ProjectFileController::class)->except(['update']);
+Route::post('/project-files/{id}', [ProjectFileController::class, 'update']);
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile/me', [ProfileController::class, 'me']);
