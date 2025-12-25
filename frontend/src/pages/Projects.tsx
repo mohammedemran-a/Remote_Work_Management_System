@@ -76,25 +76,21 @@ interface Project {
   teamMembers: number;
 }
 
-// واجهات بسيطة لتعريف شكل الكائنات في المصفوفات
 interface ApiTask {
   id: number;
-  // يمكنك إضافة خصائص أخرى إذا احتجت إليها
 }
 
 interface ApiUser {
   id: number;
-  // يمكنك إضافة خصائص أخرى إذا احتجت إليها
 }
 
-// ✅ تم تعديل هذه الواجهة لحل أخطاء ESLint
 interface ProjectAPIResponse {
   id: number;
   name?: string;
   description?: string;
   status: string;
-  tasks?: ApiTask[] | number; // استبدال any بـ ApiTask[]
-  users?: ApiUser[];         // استبدال any بـ ApiUser[]
+  tasks?: ApiTask[] | number;
+  users?: ApiUser[];
   tasks_count?: number;
   users_count?: number;
   completedTasks?: number;
@@ -138,15 +134,23 @@ const Projects = () => {
     loadUsers();
   }, [loadUsers]);
 
-  const { data: projects = [], isLoading, isError } = useQuery<Project[]>({
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+  } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
       const res = await getProjects();
       const projectsData: ProjectAPIResponse[] = res.data;
 
       return projectsData.map((p) => {
-        const tasksCount = p.tasks_count ?? (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
-        const teamMembersCount = p.users_count ?? (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
+        const tasksCount =
+          p.tasks_count ??
+          (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
+        const teamMembersCount =
+          p.users_count ??
+          (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
         const completedTasksCount = p.completedTasks ?? 0;
 
         return {
@@ -170,8 +174,6 @@ const Projects = () => {
     },
   });
 
-  // ... باقي الكود يبقى كما هو بدون تغيير ...
-  // ✅ Create Project
   const createMutation = useMutation({
     mutationFn: (data: ProjectPayload) => createProject(data),
     onSuccess: () => {
@@ -181,7 +183,6 @@ const Projects = () => {
     },
   });
 
-  // ✅ Update Project
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<ProjectPayload> }) =>
       updateProject(id, data),
@@ -192,7 +193,6 @@ const Projects = () => {
     },
   });
 
-  // ✅ Delete Project
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteProject(id),
     onSuccess: () => {
@@ -202,7 +202,6 @@ const Projects = () => {
     },
   });
 
-  // ✅ Filter Projects
   const filteredProjects = projects.filter((project) => {
     const name = project.name ?? "";
     const description = project.description ?? "";
@@ -217,9 +216,11 @@ const Projects = () => {
     return matchesSearch && matchesFilter;
   });
 
-  // ✅ Dialog Open
   const handleOpenDialog = (project?: Project) => {
-    if (!hasPermission(project ? "projects_edit" : "projects_create") && !project)
+    if (
+      !hasPermission(project ? "projects_edit" : "projects_create") &&
+      !project
+    )
       return;
 
     if (project) {
@@ -249,7 +250,6 @@ const Projects = () => {
     setIsDialogOpen(true);
   };
 
-  // ✅ Save Project
   const handleSaveProject = () => {
     if (!formData.name || !formData.description || !formData.manager_id) {
       toast({
@@ -278,7 +278,6 @@ const Projects = () => {
     }
   };
 
-  // ✅ Delete
   const handleDeleteProject = (projectId: number) => {
     if (!hasPermission("projects_delete")) return;
     setProjectToDelete(projectId);
@@ -304,8 +303,15 @@ const Projects = () => {
     }
   };
 
-  if (isLoading || usersLoading)
-    return <p>جارٍ تحميل المشاريع والمستخدمين...</p>;
+  // ✅ تم تعديل هذا الجزء لتوسيط رسالة التحميل
+  if (isLoading || usersLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">جار تحميل المشاريع...</p>
+      </div>
+    );
+  }
+
   if (isError) return <p>حدث خطأ أثناء جلب المشاريع.</p>;
 
   if (!hasPermission("projects_view")) {
@@ -430,15 +436,11 @@ const Projects = () => {
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>
-                    {project.end_date}
-                  </span>
+                  <span>{project.end_date}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  <span>
-                    {project.teamMembers} أعضاء
-                  </span>
+                  <span>{project.teamMembers} أعضاء</span>
                 </div>
               </div>
 
@@ -448,9 +450,7 @@ const Projects = () => {
                 </span>
                 <span className="text-muted-foreground">
                   {project.tasks > 0
-                    ? Math.round(
-                        (project.completedTasks / project.tasks) * 100
-                      )
+                    ? Math.round((project.completedTasks / project.tasks) * 100)
                     : 0}
                   % مكتمل
                 </span>
@@ -552,7 +552,9 @@ const Projects = () => {
                 <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {users
                     .filter((s) =>
-                      s.name.toLowerCase().includes(supervisorSearch.toLowerCase())
+                      s.name
+                        .toLowerCase()
+                        .includes(supervisorSearch.toLowerCase())
                     )
                     .map((s) => (
                       <div
@@ -579,7 +581,9 @@ const Projects = () => {
                       </div>
                     ))}
                   {users.filter((s) =>
-                    s.name.toLowerCase().includes(supervisorSearch.toLowerCase())
+                    s.name
+                      .toLowerCase()
+                      .includes(supervisorSearch.toLowerCase())
                   ).length === 0 && (
                     <div className="px-3 py-2 text-muted-foreground">
                       لم يتم العثور على مشرف

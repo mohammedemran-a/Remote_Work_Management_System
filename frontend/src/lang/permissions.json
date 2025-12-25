@@ -1,32 +1,42 @@
 {
   "dashboard_access": "عرض الانتقال إلى لوحة التحكم",
   "dashboard_view": "عرض الصفحة الرئيسية للوحة التحكم",
+
   "users_view": "عرض المستخدمين",
   "users_create": "إنشاء مستخدم",
   "users_edit": "تعديل المستخدمين",
   "users_delete": "حذف المستخدمين",
+
   "roles_view": "عرض الأدوار",
   "roles_create": "إنشاء دور جديد",
   "roles_edit": "تعديل الدور",
   "roles_delete": "حذف الدور",
+
   "notifications_view": "عرض الإشعارات",
   "notifications_delete": "حذف الإشعارات",
+
   "settings_view": "عرض الإعدادات",
   "settings_edit": "تعديل الإعدادات",
 
   "projects_view": "عرض المشاريع",
+  "projects_view_all": "عرض جميع المشاريع",
   "projects_create": "إنشاء مشروع",
   "projects_edit": "تعديل المشاريع",
   "projects_delete": "حذف المشاريع",
+
   "tasks_view": "عرض المهام",
+  "tasks_view_all": "عرض جميع المهام",
   "tasks_create": "إنشاء مهمة",
   "tasks_edit": "تعديل المهام",
   "tasks_delete": "حذف المهام",
+
   "calendar_view": "عرض التقويم",
   "calendar_create": "إنشاء حدث",
   "calendar_edit": "تعديل الأحداث",
   "calendar_delete": "حذف الأحداث",
+
   "files_view": "عرض الملفات",
+  "files_view_all": "عرض جميع الملفات",
   "files_create": "رفع ملف",
   "files_edit": "تعديل الملفات",
   "files_delete": "حذف الملفات"
