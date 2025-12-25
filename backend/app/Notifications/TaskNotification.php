@@ -3,30 +3,47 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue; // <-- الخطوة 1: استيراد الـ interface
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use App\Models\Task; // من الأفضل تحديد الموديل المستخدم
 
-class TaskNotification extends Notification
+class TaskNotification extends Notification implements ShouldQueue // <-- الخطوة 2: تطبيق الـ interface
 {
     use Queueable;
 
-    public $task;
-    public $type;
+    public Task $task;
+    public string $type;
 
     /**
-     * type = created | updated | status_changed | deleted
+     * Create a new notification instance.
+     *
+     * @param Task $task
+     * @param string $type 'created' | 'updated' | 'status_changed' | 'deleted'
      */
-    public function __construct($task, $type)
+    public function __construct(Task $task, string $type)
     {
         $this->task = $task;
         $this->type = $type;
     }
 
+    /**
+     * Get the notification's delivery channels.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
     public function via($notifiable)
     {
         return ['database', 'mail'];
     }
 
+    /**
+     * Get the array representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
     public function toDatabase($notifiable)
     {
         return [
@@ -40,6 +57,12 @@ class TaskNotification extends Notification
         ];
     }
 
+    /**
+     * Get the mail representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return \Illuminate\Notifications\Messages\MailMessage
+     */
     public function toMail($notifiable)
     {
         return (new MailMessage)
@@ -53,7 +76,12 @@ class TaskNotification extends Notification
             ->salutation('مع التحية، فريق النظام');
     }
 
-    private function getTitle()
+    /**
+     * Get the title for the notification.
+     *
+     * @return string
+     */
+    private function getTitle(): string
     {
         return match ($this->type) {
             'created'        => 'مهمة جديدة',
@@ -64,14 +92,19 @@ class TaskNotification extends Notification
         };
     }
 
-    private function getMessage()
+    /**
+     * Get the message for the notification.
+     *
+     * @return string
+     */
+    private function getMessage(): string
     {
         return match ($this->type) {
-            'created'        => 'تم إنشاء مهمة جديدة',
-            'updated'        => 'تم تحديث بيانات المهمة',
-            'status_changed' => 'تم تغيير حالة المهمة',
-            'deleted'        => 'تم حذف المهمة',
-            default          => 'تحديث على مهمة',
+            'created'        => 'تم إنشاء مهمة جديدة لك: ' . $this->task->title,
+            'updated'        => 'تم تحديث بيانات المهمة: ' . $this->task->title,
+            'status_changed' => 'تم تغيير حالة المهمة "' . $this->task->title . '" إلى: ' . $this->task->status,
+            'deleted'        => 'تم حذف المهمة: ' . $this->task->title,
+            default          => 'تحديث على مهمة: ' . $this->task->title,
         };
     }
 }

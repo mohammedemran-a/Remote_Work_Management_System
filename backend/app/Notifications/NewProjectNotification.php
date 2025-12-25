@@ -3,25 +3,44 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue; // <-- الخطوة 1: استيراد الـ interface
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use App\Models\Project; // من الأفضل تحديد الموديل المستخدم
 
-class NewProjectNotification extends Notification
+class NewProjectNotification extends Notification implements ShouldQueue // <-- الخطوة 2: تطبيق الـ interface
 {
     use Queueable;
 
-    public $project;
+    public Project $project;
 
-    public function __construct($project)
+    /**
+     * Create a new notification instance.
+     *
+     * @param Project $project
+     */
+    public function __construct(Project $project)
     {
         $this->project = $project;
     }
 
+    /**
+     * Get the notification's delivery channels.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
     public function via($notifiable)
     {
         return ['database', 'mail']; // نرسل إلى البريد + قاعدة البيانات
     }
 
+    /**
+     * Get the array representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
     public function toDatabase($notifiable)
     {
         return [
@@ -33,6 +52,12 @@ class NewProjectNotification extends Notification
         ];
     }
 
+    /**
+     * Get the mail representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return \Illuminate\Notifications\Messages\MailMessage
+     */
     public function toMail($notifiable)
     {
         return (new MailMessage)

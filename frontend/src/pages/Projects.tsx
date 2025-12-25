@@ -76,12 +76,27 @@ interface Project {
   teamMembers: number;
 }
 
+// واجهات بسيطة لتعريف شكل الكائنات في المصفوفات
+interface ApiTask {
+  id: number;
+  // يمكنك إضافة خصائص أخرى إذا احتجت إليها
+}
+
+interface ApiUser {
+  id: number;
+  // يمكنك إضافة خصائص أخرى إذا احتجت إليها
+}
+
+// ✅ تم تعديل هذه الواجهة لحل أخطاء ESLint
 interface ProjectAPIResponse {
   id: number;
   name?: string;
   description?: string;
   status: string;
-  tasks?: number;
+  tasks?: ApiTask[] | number; // استبدال any بـ ApiTask[]
+  users?: ApiUser[];         // استبدال any بـ ApiUser[]
+  tasks_count?: number;
+  users_count?: number;
   completedTasks?: number;
   start_date?: string;
   end_date?: string;
@@ -123,33 +138,39 @@ const Projects = () => {
     loadUsers();
   }, [loadUsers]);
 
-  // ✅ Query Projects
   const { data: projects = [], isLoading, isError } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
       const res = await getProjects();
-      // Type-safe access to res.data
       const projectsData: ProjectAPIResponse[] = res.data;
-      return projectsData.map((p) => ({
-        id: p.id,
-        name: p.name || "",
-        description: p.description || "",
-        status: p.status || "نشط",
-        tasks: p.tasks ?? 0,
-        completedTasks: p.completedTasks ?? 0,
-        progress:
-          Number.isFinite(p.completedTasks) && Number.isFinite(p.tasks) && p.tasks! > 0
-            ? Math.round((p.completedTasks! / p.tasks!) * 100)
-            : 0,
-        start_date: p.start_date || "",
-        end_date: p.end_date || "",
-        manager_id: p.manager_id,
-        manager_name: p.manager?.name || "",
-        teamMembers: p.teamMembers ?? 0,
-      }));
+
+      return projectsData.map((p) => {
+        const tasksCount = p.tasks_count ?? (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
+        const teamMembersCount = p.users_count ?? (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
+        const completedTasksCount = p.completedTasks ?? 0;
+
+        return {
+          id: p.id,
+          name: p.name || "",
+          description: p.description || "",
+          status: p.status || "نشط",
+          tasks: Number(tasksCount),
+          completedTasks: Number(completedTasksCount),
+          progress:
+            tasksCount > 0
+              ? Math.round((completedTasksCount / tasksCount) * 100)
+              : 0,
+          start_date: p.start_date || "",
+          end_date: p.end_date || "",
+          manager_id: p.manager_id,
+          manager_name: p.manager?.name || "",
+          teamMembers: Number(teamMembersCount),
+        };
+      });
     },
   });
 
+  // ... باقي الكود يبقى كما هو بدون تغيير ...
   // ✅ Create Project
   const createMutation = useMutation({
     mutationFn: (data: ProjectPayload) => createProject(data),
@@ -406,16 +427,16 @@ const Projects = () => {
                 <Progress value={project.progress} className="h-2" />
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>
                     {project.end_date}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span>
                     {project.teamMembers} أعضاء
                   </span>
                 </div>
@@ -423,12 +444,12 @@ const Projects = () => {
 
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  المهام: {project.completedTasks ?? 0}/{project.tasks ?? 0}
+                  المهام: {project.completedTasks}/{project.tasks}
                 </span>
                 <span className="text-muted-foreground">
-                  {project.tasks && project.tasks > 0
+                  {project.tasks > 0
                     ? Math.round(
-                        ((project.completedTasks ?? 0) / project.tasks) * 100
+                        (project.completedTasks / project.tasks) * 100
                       )
                     : 0}
                   % مكتمل
