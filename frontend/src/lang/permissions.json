@@ -39,5 +39,8 @@
   "files_view_all": "عرض جميع الملفات",
   "files_create": "رفع ملف",
   "files_edit": "تعديل الملفات",
-  "files_delete": "حذف الملفات"
+  "files_delete": "حذف الملفات",
+  
+  "activities_view": "عرض صفحة الأنشطة",
+  "activities_delete": "حذف الأنشطة"
 }

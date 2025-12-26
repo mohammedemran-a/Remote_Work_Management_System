@@ -48,6 +48,8 @@ class RolePermissionSeeder extends Seeder
             "files_create",
             "files_edit",
             "files_delete",
+            "activities_view",
+            "activities_delete",
         ];
 
         // 🔹 إنشاء الصلاحيات

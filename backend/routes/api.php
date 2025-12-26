@@ -10,7 +10,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\api\ProjectController;
 use App\Http\Controllers\api\TaskController;
 use App\Http\Controllers\api\EventController;
-use App\Http\Controllers\api\TeamController;
+// use App\Http\Controllers\api\TeamController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\ProjectFileController;
 use App\Http\Controllers\api\ChatController;
@@ -54,7 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/events', EventController::class);
 
     // --- أعضاء الفريق (Team Members) ---
-    Route::apiResource('/team-members', TeamController::class);
+    // Route::apiResource('/team-members', TeamController::class);
 
     // --- ملفات المشاريع ---
 Route::get('/project-files/{id}/download', [ProjectFileController::class, 'download']);
@@ -95,3 +95,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/conversations', [ChatController::class, 'createConversation']);
 Route::post('/conversations/{conversation}/members', [ChatController::class, 'addMembers']);
 });
+
+
+
+use App\Http\Controllers\api\TeamController;
+use App\Http\Controllers\api\TeamMemberController;
+
+Route::apiResource('teams', TeamController::class);
+Route::apiResource('team-members', TeamMemberController::class);

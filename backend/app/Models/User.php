@@ -26,7 +26,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-        // المشاريع التي يديرها
+    // المشاريع التي يديرها
     public function managedProjects() {
         return $this->hasMany(Project::class, 'manager_id');
     }
@@ -43,29 +43,34 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assigned_to');
     }
 
+    // الملفات التي رفعها المستخدم
     public function uploadedFiles() {
        return $this->hasMany(ProjectFile::class, 'uploaded_by');
     }
 
-    public function teamMember()
-{
-    return $this->hasOne(TeamMember::class);
-}
+    // عضويته في الفرق
+    public function teamMember() {
+        return $this->hasOne(TeamMember::class);
+    }
 
+    public function teams() {
+        return $this->belongsToMany(Team::class, 'team_members')
+                    ->withPivot('role_in_team', 'status')
+                    ->withTimestamps();
+    }
 
-    public function profile()
-    {
+    // الملف الشخصي
+    public function profile() {
         return $this->hasOne(Profile::class);
     }
 
-     public function activityLogs()
-    {
+    // سجل النشاطات
+    public function activityLogs() {
         return $this->hasMany(ActivityLog::class);
     }
-    
-public function conversations() {
-    return $this->belongsToMany(Conversation::class);
-}
 
-
+    // المحادثات
+    public function conversations() {
+        return $this->belongsToMany(Conversation::class);
+    }
 }

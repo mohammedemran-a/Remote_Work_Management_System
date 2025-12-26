@@ -1,25 +1,22 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class TeamMember extends Model
 {
-    use HasFactory;
-        protected $fillable = [
+    protected $fillable = [
+        'team_id',
         'user_id',
-        'phone',
-        'location',
-        'join_date',
+        'role_in_team',
         'status',
-        'tasks_completed',
-        'tasks_in_progress',
-        'efficiency',
-        'last_active',
     ];
 
-    public function user()
-    {
+    public function team() {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function user() {
         return $this->belongsTo(User::class);
     }
 }

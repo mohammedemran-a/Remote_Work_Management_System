@@ -1,12 +1,10 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
 class Project extends Model
 {
-
     protected $fillable = [
         'name',
         'description',
@@ -14,7 +12,6 @@ class Project extends Model
         'end_date',
         'status',
         'manager_id'
-    
     ];
 
     // المدير المسؤول عن المشروع
@@ -29,10 +26,18 @@ class Project extends Model
 
     // المستخدمين المشاركين بالمشروع
     public function users() {
-        return $this->belongsToMany(User::class, 'project_users')->withPivot('role_in_project', 'joined_at')->withTimestamps();
+        return $this->belongsToMany(User::class, 'project_users')
+                    ->withPivot('role_in_project', 'joined_at')
+                    ->withTimestamps();
     }
 
+    // الملفات التابعة للمشروع
     public function files() {
         return $this->hasMany(ProjectFile::class);
+    }
+
+    // الفرق التابعة للمشروع
+    public function teams() {
+        return $this->belongsToMany(Team::class, 'project_team')->withTimestamps();
     }
 }

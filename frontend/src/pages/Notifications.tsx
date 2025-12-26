@@ -1,29 +1,45 @@
-import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { useState } from "react";
 import {
   Bell,
+  Check,
   CheckCheck,
-  CheckCircle2,
+  X,
   UserPlus,
   FileText,
   Calendar,
+  CheckCircle2,
 } from "lucide-react";
 
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+
+import { useToast } from "@/hooks/use-toast";
 import {
   getAllNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from "@/api/notifications";
 
-// -------------------------------
-// Notification Interface
-// -------------------------------
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// --------------------------------
+// Types
+// --------------------------------
 interface Notification {
   id: string;
   data: {
@@ -38,116 +54,58 @@ interface Notification {
   created_at: string;
 }
 
-// -------------------------------
+// --------------------------------
 // Component
-// -------------------------------
+// --------------------------------
 const Notifications = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 🔴 Dialog states
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
-  // -----------------------------
-  // Load Notifications
-  // -----------------------------
-  const loadNotifications = useCallback(async () => {
-    try {
-      const data = await getAllNotifications();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء جلب الإشعارات",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
-  }, [toast]);
+  // --------------------------------
+  // React Query: fetch notifications
+  // --------------------------------
+  const { data: notifications = [], isLoading, isError } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: getAllNotifications,
+    retry: false,
+  });
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  // --------------------------------
+  // Mutations
+  // --------------------------------
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationAsRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
-  // -----------------------------
-  // Mark one notification as read
-  // -----------------------------
-  const handleMarkAsRead = async (id: string) => {
-    try {
-      await markNotificationAsRead(id);
+  const markAllAsReadMutation = useMutation({
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, read_at: new Date().toISOString() } : item
-        )
-      );
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNotification(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
-      toast({
-        title: "تم التحديث",
-        description: "تم تعليم الإشعار كمقروء",
-      });
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء العملية",
-        variant: "destructive",
-      });
-    }
-  };
+  const deleteAllMutation = useMutation({
+    mutationFn: deleteAllNotifications,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
-  // -----------------------------
-  // Mark all notifications as read
-  // -----------------------------
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsAsRead();
-
-      setNotifications((prev) =>
-        prev.map((item) => ({
-          ...item,
-          read_at: new Date().toISOString(),
-        }))
-      );
-
-      toast({
-        title: "تم التحديث",
-        description: "تم تعليم جميع الإشعارات كمقروءة",
-      });
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء العملية",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // -----------------------------
-  // Date Formatter (12/12/2025, 10:43 PM)
-  // -----------------------------
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  // -----------------------------
+  // --------------------------------
   // Helpers
-  // -----------------------------
+  // --------------------------------
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
-  const filterNotifications = (type: string) => {
-    if (type === "all") return notifications;
-    if (type === "unread") return notifications.filter((n) => !n.read_at);
-    return notifications.filter((n) => n.type === type);
-  };
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleString("ar-EG");
 
-  const getNotificationIcon = (type: string) => {
+  const getIcon = (type: string) => {
     switch (type) {
       case "task":
         return CheckCircle2;
@@ -162,185 +120,188 @@ const Notifications = () => {
     }
   };
 
-  const getNotificationColor = (type: string) => {
+  const getColor = (type: string) => {
     switch (type) {
       case "task":
-        return "bg-blue-500/10 text-blue-500";
+        return "bg-blue-500/10 text-blue-600";
       case "project":
-        return "bg-purple-500/10 text-purple-500";
+        return "bg-purple-500/10 text-purple-600";
       case "team":
-        return "bg-green-500/10 text-green-500";
+        return "bg-green-500/10 text-green-600";
       case "reminder":
-        return "bg-orange-500/10 text-orange-500";
+        return "bg-orange-500/10 text-orange-600";
       default:
         return "bg-primary/10 text-primary";
     }
   };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "task":
-        return "مهام";
-      case "project":
-        return "مشاريع";
-      case "team":
-        return "فريق";
-      case "reminder":
-        return "تذكير";
-      default:
-        return "عام";
-    }
-  };
-
-  if (loading) {
+  // --------------------------------
+  // Loading & Error
+  // --------------------------------
+  if (isLoading) {
     return (
-      <div className="flex justify-center p-10 text-lg text-muted-foreground">
-        جاري تحميل الإشعارات...
+      <div className="space-y-4 p-6">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        ))}
       </div>
     );
   }
 
+  if (isError) {
+    return (
+      <p className="text-center text-red-600 py-10">
+        حدث خطأ أثناء تحميل الإشعارات
+      </p>
+    );
+  }
+
+  // --------------------------------
+  // Render
+  // --------------------------------
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-8 w-8" />
-            الإشعارات
-            {unreadCount > 0 && (
-              <Badge variant="destructive">{unreadCount}</Badge>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            جميع إشعاراتك وتحديثاتك في مكان واحد
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Bell className="h-8 w-8" />
+          الإشعارات
+          {unreadCount > 0 && (
+            <Badge variant="destructive">{unreadCount}</Badge>
+          )}
+        </h1>
 
-        <div>
-          <Button variant="outline" onClick={handleMarkAllAsRead}>
-            <CheckCheck className="ml-2 h-4 w-4" />
-            تعليم الكل كمقروء
-          </Button>
+        <div className="flex gap-2">
+          {unreadCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => markAllAsReadMutation.mutate()}
+            >
+              <CheckCheck className="ml-2 h-4 w-4" />
+              تعليم الكل كمقروء
+            </Button>
+          )}
+
+          {notifications.length > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteAllOpen(true)}
+            >
+              <X className="ml-2 h-4 w-4" />
+              حذف الكل
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="all">الكل ({notifications.length})</TabsTrigger>
-          <TabsTrigger value="unread">غير مقروءة ({unreadCount})</TabsTrigger>
-          <TabsTrigger value="task">المهام</TabsTrigger>
-          <TabsTrigger value="project">المشاريع</TabsTrigger>
-          <TabsTrigger value="team">الفريق</TabsTrigger>
-          <TabsTrigger value="reminder">التذكيرات</TabsTrigger>
-        </TabsList>
+      {/* Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle>جميع الإشعارات</CardTitle>
+        </CardHeader>
 
-        {["all", "unread", "task", "project", "team", "reminder"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="space-y-4">
-            {filterNotifications(tab).length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Bell className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">لا توجد إشعارات</p>
-                </CardContent>
-              </Card>
-            ) : (
-              filterNotifications(tab).map((notification) => {
-                const Icon = getNotificationIcon(notification.type);
+        <CardContent className="space-y-4">
+          {notifications.length === 0 && (
+            <p className="text-center text-muted-foreground py-10">
+              لا توجد إشعارات حالياً
+            </p>
+          )}
 
-                return (
-                  <Card
-                    key={notification.id}
-                    className={`${
-                      !notification.read_at
-                        ? "border-r-4 border-r-primary bg-accent/5"
-                        : ""
-                    }`}
+          {notifications.map((n) => {
+            const Icon = getIcon(n.type);
+
+            return (
+              <div
+                key={n.id}
+                className={`flex items-start justify-between p-4 rounded-lg border transition ${
+                  !n.read_at ? "bg-primary/5" : "bg-background"
+                }`}
+              >
+                <div className="flex gap-4">
+                  <div className={`p-3 rounded-lg ${getColor(n.type)}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-lg">{n.data.title}</h3>
+                    <p className="text-muted-foreground">{n.data.message}</p>
+                    <small className="text-muted-foreground">
+                      {formatDate(n.created_at)}
+                    </small>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {!n.read_at && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="تعليم كمقروء"
+                      onClick={() => markAsReadMutation.mutate(n.id)}
+                    >
+                      <Check className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
+
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="حذف"
+                    onClick={() => setDeleteId(n.id)}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`p-3 rounded-lg ${getNotificationColor(
-                            notification.type
-                          )}`}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </div>
+                    <X className="h-4 w-4 text-red-600" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              {/* Title */}
-                              <h3 className="font-semibold text-foreground">
-                                {notification.data.title}
-                              </h3>
+      {/* 🔴 Delete Single Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف الإشعار نهائيًا ولا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteId) deleteMutation.mutate(deleteId);
+                setDeleteId(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-                              {/* Message */}
-                              <p className="text-muted-foreground text-sm mt-1">
-                                {notification.data.message}
-                              </p>
-
-                              {/* Project ID */}
-                              {notification.data.project_id && (
-                                <p className="text-sm text-muted-foreground">
-                                  رقم المشروع: {notification.data.project_id}
-                                </p>
-                              )}
-
-                              {/* Status */}
-                              {notification.data.status && (
-                                <p className="text-sm text-muted-foreground">
-                                  الحالة: {notification.data.status}
-                                </p>
-                              )}
-
-                              {/* Manager Name */}
-                              {notification.data.manager_name && (
-                                <p className="text-sm text-muted-foreground">
-                                  المشرف: {notification.data.manager_name}
-                                </p>
-                              )}
-                            </div>
-
-                            {!notification.read_at && (
-                              <Badge className="mr-2">جديد</Badge>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">
-                                {getTypeLabel(notification.type)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDate(notification.created_at)}
-                              </span>
-                            </div>
-
-                            {!notification.read_at && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  handleMarkAsRead(notification.id)
-                                }
-                              >
-                                <CheckCheck className="h-4 w-4 ml-1" />
-                                تعليم كمقروء
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+      {/* 🔴 Delete All Dialog */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف جميع الإشعارات نهائيًا ولا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAllMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف الكل
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
