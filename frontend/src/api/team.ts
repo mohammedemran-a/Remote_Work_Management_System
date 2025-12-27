@@ -1,82 +1,76 @@
 // src/api/team.ts
-
 import { api } from "./axios";
 import { AxiosError } from "axios";
-import { User } from "./users"; // 🟢 1. استيراد واجهة User من مصدرها الصحيح
+import { User } from "./users"; 
+import { Project } from "./project"; // ✅ الربط الصحيح بالملف أعلاه
 
 /* ================= TYPES ================= */
 
-// 🟢 2. تعريف الواجهة هنا لتكون المصدر الوحيد للحقيقة
-export interface TeamMember {
+export interface Team {
   id: number;
-  user_id: number;
-  phone: string | null;
-  location: string;
-  join_date: string;
-  // الحقول التالية قد لا تكون موجودة في كل الاستجابات، لذا نجعلها اختيارية
-  status?: string;
-  tasks_completed?: number;
-  tasks_in_progress?: number;
-  efficiency?: number;
-  last_active?: string;
-  user: User; // ✅ استخدام واجهة User المستوردة
+  name: string;
+  description: string | null;
+  leader_id: number;
+  leader?: User;         
+  members?: User[];      
+  projects?: Project[]; // ✅ استخدام الواجهة المستوردة
+  created_at?: string;
 }
 
-// واجهة للبيانات التي نرسلها عند إضافة أو تعديل عضو
-export interface TeamMemberPayload {
-  user_id: number;
-  location: string;
-  join_date: string;
-  department: string;
-  phone: string | null;
+export interface TeamPayload {
+  name: string;
+  description?: string;
+  leader_id: number;
+  project_ids?: number[]; 
+  member_ids?: number[];
+  
 }
 
-// واجهة لرسائل الخطأ
-interface ApiError {
-  message: string;
+export interface AddMemberPayload {
+  team_id: number;
+  user_id: number;
+  role_in_team: 'Supervisor' | 'Member';
+  status: string;
 }
 
 /* ================= API FUNCTIONS ================= */
 
-// --- دالة لجلب كل أعضاء الفريق ---
-export const getTeamMembers = async (): Promise<TeamMember[]> => {
+const handleApiError = (error: any, defaultMessage: string) => {
+  const err = error as AxiosError<{ message: string }>;
+  return err.response?.data || { message: defaultMessage };
+};
+
+export const getTeams = async (): Promise<Team[]> => {
   try {
-    const response = await api.get<{ data: TeamMember[] }>("/team-members");
-    return response.data.data;
+    const response = await api.get<Team[]>("/teams");
+    return response.data;
   } catch (error) {
-    const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في جلب أعضاء الفريق" };
+    throw handleApiError(error, "خطأ في جلب الفرق");
   }
 };
 
-// --- دالة لإضافة عضو جديد ---
-export const addTeamMember = async (payload: TeamMemberPayload): Promise<TeamMember> => {
+export const createTeam = async (payload: TeamPayload): Promise<Team> => {
   try {
-    const response = await api.post<{ data: TeamMember }>("/team-members", payload);
-    return response.data.data;
+    const response = await api.post<Team>("/teams", payload);
+    return response.data;
   } catch (error) {
-    const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في إضافة العضو للفريق" };
+    throw handleApiError(error, "خطأ في إنشاء الفريق");
   }
 };
 
-// --- دالة لتحديث عضو حالي ---
-export const updateTeamMember = async (id: number, payload: Partial<TeamMemberPayload>): Promise<TeamMember> => {
+export const addMemberToTeam = async (payload: AddMemberPayload): Promise<any> => {
   try {
-    const response = await api.put<{ data: TeamMember }>(`/team-members/${id}`, payload);
-    return response.data.data;
+    const response = await api.post("/team-members", payload);
+    return response.data;
   } catch (error) {
-    const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في تحديث العضو" };
+    throw handleApiError(error, "خطأ في إضافة العضو للفريق");
   }
 };
 
-// --- دالة لحذف عضو من الفريق ---
-export const deleteTeamMember = async (id: number): Promise<void> => {
+export const deleteTeam = async (id: number): Promise<void> => {
   try {
-    await api.delete(`/team-members/${id}`);
+    await api.delete(`/teams/${id}`);
   } catch (error) {
-    const err = error as AxiosError<ApiError>;
-    throw err.response?.data || { message: "خطأ في إزالة العضو" };
+    throw handleApiError(error, "خطأ في حذف الفريق");
   }
 };

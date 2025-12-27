@@ -1,32 +1,21 @@
 // src/pages/Team/index.tsx
-
-// --- استيراد المكونات الفرعية ---
 import TeamStats from "./TeamStats";
-import TeamFilters from "./TeamFilters";
+import { TeamFilters } from "./TeamFilters";
 import TeamGrid from "./TeamGrid";
-import TeamDialogs from "./TeamDialogs";
-
-// --- استيراد الـ Hook الرئيسي ---
+import { TeamDialogs } from "./TeamDialogs";
 import { useTeamState } from "./useTeamState";
-import { UserPlus } from "lucide-react";
+import { Plus } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 
-// --- المكون الرئيسي الذي يجمع كل الأجزاء ---
 export const TeamPage = () => {
-  // --- استدعاء الـ Hook للحصول على كل البيانات والدوال ---
   const {
     loading,
     teamMembers,
     availableUsers,
+    allProjects, // 🟢 تأكد من استخراجها هنا من الـ Hook
     filteredMembers,
-    departments,
-    roles,
     searchTerm,
     setSearchTerm,
-    filterRole,
-    setFilterRole,
-    filterDepartment,
-    setFilterDepartment,
     isAddDialogOpen,
     setIsAddDialogOpen,
     isDeleteDialogOpen,
@@ -34,57 +23,42 @@ export const TeamPage = () => {
     formData,
     setFormData,
     selectedMember,
-    memberToDelete,
     handleOpenDialog,
     handleSaveMember,
     handleDeleteMember,
     confirmDelete,
     getRoleColor,
-    getStatusColor,
-    getEfficiencyColor,
   } = useTeamState();
 
   return (
     <div className="space-y-8" dir="rtl">
-      {/* --- قسم العنوان الرئيسي --- */}
       <div className="flex items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">الفريق</h1>
-          <p className="text-lg text-muted-foreground">إدارة أعضاء الفريق والأدوار</p>
+          <h1 className="text-4xl font-bold text-foreground">فرق العمل</h1>
+          <p className="text-lg text-muted-foreground">إدارة وتشكيل فرق المشاريع وتعيين القادة</p>
         </div>
         <Button className="flex items-center gap-2" onClick={() => handleOpenDialog(null)}>
-          <UserPlus className="h-4 w-4" />
-          إضافة عضو جديد
+          <Plus className="h-4 w-4" />
+          إنشاء فريق جديد
         </Button>
       </div>
 
-      {/* --- قسم الإحصائيات --- */}
-      <TeamStats teamMembers={teamMembers} departments={departments} />
+      <TeamStats teamMembers={teamMembers} />
 
-      {/* --- قسم الفلاتر والبحث --- */}
       <TeamFilters
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        filterDepartment={filterDepartment}
-        setFilterDepartment={setFilterDepartment}
-        departments={departments}
-        filterRole={filterRole}
-        setFilterRole={setFilterRole}
-        roles={roles}
       />
 
-      {/* --- قسم عرض أعضاء الفريق --- */}
       <TeamGrid
         loading={loading}
         filteredMembers={filteredMembers}
         handleOpenDialog={handleOpenDialog}
         handleDeleteMember={handleDeleteMember}
         getRoleColor={getRoleColor}
-        getStatusColor={getStatusColor}
-        getEfficiencyColor={getEfficiencyColor}
       />
 
-      {/* --- قسم النوافذ المنبثقة (Dialogs) --- */}
+      {/* 🟢 التعديل الجوهري هنا: تمرير allProjects */}
       <TeamDialogs
         isAddDialogOpen={isAddDialogOpen}
         setIsAddDialogOpen={setIsAddDialogOpen}
@@ -94,6 +68,7 @@ export const TeamPage = () => {
         formData={formData}
         setFormData={setFormData}
         availableUsers={availableUsers}
+        allProjects={allProjects || []} // 👈 مررها هنا وأضف || [] للحماية
         handleSaveMember={handleSaveMember}
         confirmDelete={confirmDelete}
       />
@@ -101,5 +76,4 @@ export const TeamPage = () => {
   );
 };
 
-// --- تصدير المكون كـ default ليعمل مع App.tsx ---
 export default TeamPage;
