@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   Select,
   SelectContent,
@@ -34,7 +35,6 @@ import {
 import {
   Search,
   Filter,
-  Download,
   Activity,
   LogIn,
   LogOut,
@@ -85,16 +85,17 @@ interface ActivityLog {
 type BadgeVariant = "default" | "secondary" | "destructive";
 
 // ===================== FORMAT DATE =====================
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
 // ===================== COMPONENT =====================
 const ActivityLogs = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,14 +103,16 @@ const ActivityLogs = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { toast } = useToast();
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+
+  const canView = hasPermission("activities_view");
+  const canDelete = hasPermission("activities_delete");
 
   // ===================== جلب البيانات =====================
   const loadLogs = useCallback(async () => {
     try {
       const response = await getActivityLogs(searchQuery, filterType);
-
       const records = response.data as ActivityLogResponse[];
-
       setLogs(
         records.map((log) => ({
           id: log.id,
@@ -176,32 +179,8 @@ const ActivityLogs = () => {
     };
 
     const config = variants[type ?? ""];
-
     if (!config) return <Badge variant="secondary">غير معروف</Badge>;
-
     return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  // ===================== تصدير CSV =====================
-  const exportLogs = () => {
-    const csvContent = logs
-      .map(
-        (log) =>
-          `${formatDate(log.timestamp)},${log.user},${log.action},${
-            log.target || "-"
-          }`
-      )
-      .join("\n");
-
-    const blob = new Blob([`التوقيت,المستخدم,الإجراء,الهدف\n${csvContent}`], {
-      type: "text/csv",
-    });
-
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `activity-logs-${new Date().toISOString()}.csv`;
-    a.click();
   };
 
   // ===================== الفلترة =====================
@@ -261,6 +240,14 @@ const ActivityLogs = () => {
     }
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        🚫 لا تملك صلاحية عرض سجل الأنشطة
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* رأس الصفحة */}
@@ -273,7 +260,7 @@ const ActivityLogs = () => {
         </div>
 
         <div className="flex gap-2">
-          {selectedIds.length > 0 && (
+          {canDelete && selectedIds.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">
@@ -301,10 +288,7 @@ const ActivityLogs = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button onClick={exportLogs}>
-            <Download className="ml-2 h-4 w-4" />
-            تصدير السجلات
-          </Button>
+          {/* ✅ --- تم حذف زر التصدير من هنا --- ✅ */}
         </div>
       </div>
 
@@ -383,35 +367,39 @@ const ActivityLogs = () => {
                     {formatDate(log.timestamp)}
                   </TableCell>
                   <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent dir="rtl" className="text-right">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-right">تأكيد الحذف</AlertDialogTitle>
-                          <AlertDialogDescription className="text-right">
-                            هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن
-                            هذا الإجراء.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter className="flex-row-reverse gap-2">
-                          <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteSingle(log.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    {canDelete && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
-                            حذف
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent dir="rtl" className="text-right">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-right">
+                              تأكيد الحذف
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-right">
+                              هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن
+                              هذا الإجراء.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row-reverse gap-2">
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteSingle(log.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              حذف
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

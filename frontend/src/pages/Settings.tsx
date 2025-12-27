@@ -125,6 +125,14 @@ const Settings = () => {
     }
   };
 
+    if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">جار تحميل المشاريع...</p>
+      </div>
+    );
+  }
+
   // ==========================
   // ❌ لا يملك صلاحية العرض
   // ==========================
