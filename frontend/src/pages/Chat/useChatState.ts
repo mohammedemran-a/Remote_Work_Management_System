@@ -47,7 +47,7 @@ export const useChatState = () => {
       ]);
       setConversations(convosData || []);
       setAllUsers(usersData || []);
-      setAllProjects(projectsResponse.data || []);
+     setAllProjects(projectsResponse);
     } catch (error) {
       toast({ title: "خطأ", description: "فشل في جلب البيانات الأولية للدردشة.", variant: "destructive" });
       setConversations([]);
