@@ -317,7 +317,11 @@ const Projects = () => {
   if (isError) return <p>حدث خطأ أثناء جلب المشاريع.</p>;
 
   if (!hasPermission("projects_view")) {
-    return <p className="text-center py-12">🚫 ليس لديك صلاحية عرض المشاريع</p>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">ليس لديك صلاحية عرض المشاريع</p>
+      </div>
+    );
   }
 
   return (
