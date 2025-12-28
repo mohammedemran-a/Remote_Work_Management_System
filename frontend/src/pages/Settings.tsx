@@ -40,6 +40,7 @@ const Settings = () => {
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // true لأنها تبدأ عند تحميل الصفحة
 
   // ==========================
   // ✅ جلب الإعدادات (مع صلاحية العرض)
@@ -75,6 +76,8 @@ const Settings = () => {
         }
       } catch (error) {
         console.error(error);
+      } finally {
+        setIsLoading(false); // ✅ بعد انتهاء التحميل
       }
     };
 
@@ -125,21 +128,20 @@ const Settings = () => {
     }
   };
 
-    if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-lg text-muted-foreground">جار تحميل المشاريع...</p>
+        <p className="text-lg text-muted-foreground">جار تحميل الإعدادات...</p>
       </div>
     );
   }
 
-  // ==========================
-  // ❌ لا يملك صلاحية العرض
-  // ==========================
   if (!canView) {
     return (
-      <div className="p-10 text-center text-destructive text-lg font-semibold">
-        🚫 ليس لديك صلاحية عرض الإعدادات
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          ليس لديك صلاحية عرض الإعدادات
+        </p>
       </div>
     );
   }
@@ -265,4 +267,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default Settings;  

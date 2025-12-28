@@ -10,19 +10,36 @@ interface TrendsProps {
 }
 
 const PRIORITY_COLORS = ["#ef4444", "#f97316", "#facc15", "#84cc16"];
-
-export const Trends = ({ tasksByPriorityData }: TrendsProps) => {
+export const Trends = ({ tasksByPriorityData = [] }: TrendsProps) => {
   return (
     <Card>
-      <CardHeader><CardTitle>اتجاهات المهام (حسب الأولوية)</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>اتجاهات المهام (حسب الأولوية)</CardTitle>
+      </CardHeader>
+
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
-            <Pie data={tasksByPriorityData} cx="50%" cy="50%" labelLine={false} outerRadius={80} fill="#8884d8" dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-              {tasksByPriorityData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[index % PRIORITY_COLORS.length]} />
+            <Pie
+              data={tasksByPriorityData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={80}
+              dataKey="value"
+              nameKey="name"
+              label={({ name, percent }) =>
+                `${name} ${(percent * 100).toFixed(0)}%`
+              }
+            >
+              {tasksByPriorityData.map((_, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={PRIORITY_COLORS[index % PRIORITY_COLORS.length]}
+                />
               ))}
             </Pie>
+
             <Tooltip />
             <Legend />
           </PieChart>

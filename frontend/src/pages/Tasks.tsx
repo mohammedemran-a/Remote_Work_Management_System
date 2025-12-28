@@ -97,7 +97,7 @@ const Tasks = () => {
     const fetchProjects = async () => {
       try {
         const res = await getProjects();
-        setProjects(res.data.map((p) => ({ ...p, id: p.id ?? 0 })));
+        setProjects(res.map((p) => ({ ...p, id: p.id ?? 0 })));
       } catch (err) {
         toast({
           title: "خطأ",
@@ -256,11 +256,13 @@ const Tasks = () => {
       </div>
     );
   }
-  // إذا لم يكن لدى المستخدم صلاحية عرض المهام
+
   if (!hasPermission("tasks_view")) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <h3 className="text-lg font-medium">لا تمتلك صلاحية عرض المهام</h3>
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          لا تمتلك صلاحية عرض المهام
+        </p>
       </div>
     );
   }

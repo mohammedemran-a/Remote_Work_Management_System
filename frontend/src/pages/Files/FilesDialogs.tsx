@@ -99,12 +99,14 @@ const FilesDialogs = ({
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await getProjects();
-        setProjects(res.data);
+        const projects = await getProjects();
+        setProjects(projects);
       } catch (error) {
         console.error("Failed to fetch projects", error);
+        setProjects([]);
       }
     };
+
     fetchProjects();
   }, []);
 

@@ -26,7 +26,17 @@ export interface ProjectPayload {
 export const getProjects = async (): Promise<Project[]> => {
   try {
     const response = await axiosInstance.get("/projects");
-    return Array.isArray(response.data) ? response.data : [];
+
+    // يدعم كل الحالات المحتملة
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    if (Array.isArray(response.data?.data)) {
+      return response.data.data;
+    }
+
+    return [];
   } catch (error) {
     console.error("Error fetching projects:", error);
     return [];

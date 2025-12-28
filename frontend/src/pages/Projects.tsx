@@ -141,16 +141,18 @@ const Projects = () => {
   } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
-      const res = await getProjects();
-      const projectsData: ProjectAPIResponse[] = res.data;
+      // getProjects() يرجع ProjectAPIResponse[] مباشرة
+      const projectsData: ProjectAPIResponse[] = await getProjects();
 
       return projectsData.map((p) => {
         const tasksCount =
           p.tasks_count ??
           (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
+
         const teamMembersCount =
           p.users_count ??
           (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
+
         const completedTasksCount = p.completedTasks ?? 0;
 
         return {

@@ -62,6 +62,7 @@ const RolesPermissions = () => {
   const canCreate = hasPermission("roles_create");
   const canEdit = hasPermission("roles_edit");
   const canDelete = hasPermission("roles_delete");
+  const [isLoading, setIsLoading] = useState(true); // true لأنها تبدأ عند تحميل الصفحة
 
   const getCategoryFromPermission = (perm: string): string => {
     if (perm.startsWith("dashboard")) return "لوحة التحكم";
@@ -110,11 +111,19 @@ const RolesPermissions = () => {
   }, [toast]);
 
   useEffect(() => {
-    if (canView) { // <-- فقط جلب البيانات إذا كان لدى المستخدم صلاحية العرض
-      fetchRoles();
-      fetchPermissions();
-    }
-  }, [fetchRoles, fetchPermissions, canView]);
+    if (!canView) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchRoles(), fetchPermissions()]);
+      } finally {
+        setIsLoading(false); // بعد انتهاء التحميل
+      }
+    };
+
+    fetchData();
+  }, [canView, fetchRoles, fetchPermissions]);
 
   const handleDeleteRole = async (roleId: number) => {
     if (!canDelete) {
@@ -146,7 +155,10 @@ const RolesPermissions = () => {
     try {
       if (editingRole) {
         if (!canEdit) {
-          toast({ title: "ممنوع", description: "ليس لديك صلاحية تعديل الأدوار." });
+          toast({
+            title: "ممنوع",
+            description: "ليس لديك صلاحية تعديل الأدوار.",
+          });
           return;
         }
         await updateRole(editingRole.id, {
@@ -157,7 +169,10 @@ const RolesPermissions = () => {
         setEditingRole(null);
       } else {
         if (!canCreate) {
-          toast({ title: "ممنوع", description: "ليس لديك صلاحية إنشاء الأدوار." });
+          toast({
+            title: "ممنوع",
+            description: "ليس لديك صلاحية إنشاء الأدوار.",
+          });
           return;
         }
         await createRole({
@@ -203,13 +218,22 @@ const RolesPermissions = () => {
     "الإعدادات",
   ];
 
-  // <-- 3. التحقق من صلاحية العرض قبل عرض أي شيء
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          جاري تحميل الأدوار والصلاحيات...
+        </p>
+      </div>
+    );
+  }
+
   if (!canView) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8" dir="rtl">
-        <Lock className="w-16 h-16 text-destructive mb-4" />
-        <h2 className="text-2xl font-bold mb-2">الوصول مرفوض</h2>
-        <p className="text-muted-foreground">ليس لديك الصلاحية اللازمة لعرض هذه الصفحة.</p>
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          ليس لديك صلاحية لعرض صفحة الأدوار والصلاحيات
+        </p>
       </div>
     );
   }
@@ -221,7 +245,6 @@ const RolesPermissions = () => {
           الأدوار والصلاحيات
         </h1>
 
-        {/* <-- 4. التحقق من صلاحية الإنشاء قبل عرض زر الإضافة */}
         {canCreate && (
           <Dialog
             open={isDialogOpen}
@@ -435,4 +458,4 @@ const RolesPermissions = () => {
   );
 };
 
-export default RolesPermissions;
+export default RolesPermissions;  

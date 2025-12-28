@@ -98,6 +98,7 @@ const formatDate = (dateString: string) => {
 
 // ===================== COMPONENT =====================
 const ActivityLogs = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -108,8 +109,8 @@ const ActivityLogs = () => {
   const canView = hasPermission("activities_view");
   const canDelete = hasPermission("activities_delete");
 
-  // ===================== جلب البيانات =====================
   const loadLogs = useCallback(async () => {
+    setIsLoading(true); // تبدأ التحميل
     try {
       const response = await getActivityLogs(searchQuery, filterType);
       const records = response.data as ActivityLogResponse[];
@@ -140,6 +141,8 @@ const ActivityLogs = () => {
         description: "فشل تحميل السجلات",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false); // انتهاء التحميل
     }
   }, [searchQuery, filterType, toast]);
 
@@ -240,10 +243,22 @@ const ActivityLogs = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          جار تحميل سجلات الأنشطة...
+        </p>
+      </div>
+    );
+  }
+
   if (!canView) {
     return (
-      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-        🚫 لا تملك صلاحية عرض سجل الأنشطة
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          لا تملك صلاحية عرض سجل الأنشطة
+        </p>
       </div>
     );
   }
@@ -476,4 +491,4 @@ const ActivityLogs = () => {
   );
 };
 
-export default ActivityLogs;
+export default ActivityLogs;  
