@@ -1,38 +1,36 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  Users, 
-  FolderOpen, 
+import {
+  CheckCircle,
+  AlertTriangle,
+  Users,
+  FolderOpen,
   TrendingUp,
   Calendar,
-  FileText
+  FileText,
 } from "lucide-react";
 
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardData } from "@/api/dashboard";
+
 const Dashboard = () => {
-  const stats = [
-    { title: "المشاريع النشطة", value: "12", icon: FolderOpen, color: "text-blue-600" },
-    { title: "المهام المكتملة", value: "48", icon: CheckCircle, color: "text-green-600" },
-    { title: "المهام المتأخرة", value: "5", icon: AlertTriangle, color: "text-red-600" },
-    { title: "أعضاء الفريق", value: "24", icon: Users, color: "text-purple-600" },
-  ];
+  /* =========================
+     React Query (v5)
+  ========================= */
 
-  const recentProjects = [
-    { name: "تطوير موقع الشركة", progress: 75, status: "نشط", dueDate: "2024-01-15" },
-    { name: "تطبيق الهاتف المحمول", progress: 45, status: "نشط", dueDate: "2024-02-20" },
-    { name: "حملة التسويق الرقمي", progress: 90, status: "مكتمل", dueDate: "2024-01-10" },
-    { name: "نظام إدارة المخزون", progress: 30, status: "نشط", dueDate: "2024-03-01" },
-  ];
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: getDashboardData,
+  });
 
-  const recentTasks = [
-    { title: "مراجعة التصميم النهائي", assignee: "أحمد محمد", status: "مكتملة", priority: "عالية" },
-    { title: "اختبار الوحدة للواجهة", assignee: "فاطمة علي", status: "قيد التنفيذ", priority: "متوسطة" },
-    { title: "كتابة التوثيق الفني", assignee: "محمد خالد", status: "متأخرة", priority: "منخفضة" },
-    { title: "إعداد بيئة الإنتاج", assignee: "سارة أحمد", status: "جديدة", priority: "عالية" },
-  ];
+  /* =========================
+     Helpers
+  ========================= */
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -62,26 +60,60 @@ const Dashboard = () => {
     }
   };
 
+  /* =========================
+     Loading / Error
+  ========================= */
+
+  if (isLoading) {
+    return <p className="text-center mt-10">جاري تحميل لوحة التحكم...</p>;
+  }
+
+  if (isError || !data) {
+    return <p className="text-center mt-10 text-red-600">حدث خطأ أثناء جلب البيانات</p>;
+  }
+
+  /* =========================
+     Icons for Stats
+  ========================= */
+
+  const statIcons = [
+    { icon: FolderOpen, color: "text-blue-600" },
+    { icon: CheckCircle, color: "text-green-600" },
+    { icon: AlertTriangle, color: "text-red-600" },
+    { icon: Users, color: "text-purple-600" },
+  ];
+
   return (
     <div className="space-y-8" dir="rtl">
+      {/* Header */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold text-foreground">لوحة التحكم</h1>
-        <p className="text-lg text-muted-foreground">نظرة شاملة على حالة المشاريع والمهام</p>
+        <p className="text-lg text-muted-foreground">
+          نظرة شاملة على حالة المشاريع والمهام
+        </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* =========================
+         Stats Cards
+      ========================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
+        {data.stats.map((stat, index) => {
+          const Icon = statIcons[index]?.icon;
+          const color = statIcons[index]?.color;
+
           return (
             <Card key={index}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {stat.value}
+                    </p>
                   </div>
-                  <Icon className={`h-8 w-8 ${stat.color}`} />
+                  {Icon && <Icon className={`h-8 w-8 ${color}`} />}
                 </div>
               </CardContent>
             </Card>
@@ -89,6 +121,9 @@ const Dashboard = () => {
         })}
       </div>
 
+      {/* =========================
+         Projects + Tasks
+      ========================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Projects */}
         <Card>
@@ -100,21 +135,27 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentProjects.map((project, index) => (
-                <div key={index} className="space-y-2">
+              {data.recentProjects.map((project) => (
+                <div key={project.id} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-foreground">{project.name}</h4>
+                    <h4 className="font-medium text-foreground">
+                      {project.name}
+                    </h4>
                     <Badge className={getStatusColor(project.status)}>
                       {project.status}
                     </Badge>
                   </div>
+
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>التقدم: {project.progress}%</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {project.dueDate}
-                    </span>
+                    {project.dueDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {project.dueDate}
+                      </span>
+                    )}
                   </div>
+
                   <Progress value={project.progress} className="h-2" />
                 </div>
               ))}
@@ -132,17 +173,28 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTasks.map((task, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
+              {data.recentTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between p-3 bg-accent/50 rounded-lg"
+                >
                   <div className="space-y-1">
-                    <h4 className="font-medium text-foreground">{task.title}</h4>
-                    <p className="text-sm text-muted-foreground">المسند إلى: {task.assignee}</p>
+                    <h4 className="font-medium text-foreground">
+                      {task.title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      المسند إلى: {task.assignee}
+                    </p>
                   </div>
+
                   <div className="flex flex-col gap-2">
                     <Badge className={getStatusColor(task.status)}>
                       {task.status}
                     </Badge>
-                    <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                    <Badge
+                      variant="outline"
+                      className={getPriorityColor(task.priority)}
+                    >
                       {task.priority}
                     </Badge>
                   </div>
@@ -153,7 +205,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* =========================
+         Quick Actions
+      ========================= */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -167,10 +221,12 @@ const Dashboard = () => {
               <FolderOpen className="h-6 w-6 text-primary" />
               <span className="font-medium">إنشاء مشروع جديد</span>
             </div>
+
             <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors">
               <CheckCircle className="h-6 w-6 text-primary" />
               <span className="font-medium">إضافة مهمة جديدة</span>
             </div>
+
             <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg cursor-pointer hover:bg-primary/20 transition-colors">
               <FileText className="h-6 w-6 text-primary" />
               <span className="font-medium">إنشاء تقرير</span>

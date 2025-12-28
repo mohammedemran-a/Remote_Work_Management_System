@@ -103,3 +103,9 @@ use App\Http\Controllers\api\TeamMemberController;
 
 Route::apiResource('teams', TeamController::class);
 Route::apiResource('team-members', TeamMemberController::class);
+
+
+
+use App\Http\Controllers\Api\DashboardController;
+
+Route::middleware('auth:sanctum')->get('/dashboard', [DashboardController::class, 'index']);
