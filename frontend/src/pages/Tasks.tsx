@@ -65,10 +65,12 @@ const Tasks = () => {
   const queryClient = useQueryClient();
   const { users, loadUsers } = useUsersStore();
   const { hasPermission } = useAuthStore();
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
-  const [projects, setProjects] = useState<(ProjectPayload & { id: number })[]>(
-    []
-  );
+  const [projects, setProjects] = useState<(ProjectPayload & { id: number })[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
@@ -85,21 +87,32 @@ const Tasks = () => {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
- const currentUserId = useAuthStore((state) => state.user?.id);
+  // جلب المهام
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<TaskResponse[]>({
+    queryKey: ["tasks", currentUserId],
+    queryFn: async () => {
+      const allTasks = await getTasks();
+      
+      // ✅====== التعديل المطلوب هنا ======✅
+      // تحقق إذا كان المستخدم لديه صلاحية عرض جميع المهام
+      const canViewAll = hasPermission("tasks_view_all");
 
-// جلب المهام (يعرض فقط المهام المخصصة للمستخدم)
-const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
-  queryKey: ["tasks"],
-  queryFn: async () => {
-    const allTasks = await getTasks();
-    // تصفية المهام لتظهر فقط المهام الخاصة بالمستخدم
-    return allTasks.filter((task) => task.assigned_to === currentUserId);
-  },
-  enabled: hasPermission("tasks_view"),
-});
-  // ✅ جلب المشاريع
+      // إذا كان لديه الصلاحية، أظهرها كلها
+      if (canViewAll) {
+        return allTasks;
+      }
+      
+      // وإلا، أظهر فقط المهام المخصصة له
+      return allTasks.filter((task) => task.assigned_to === currentUserId);
+    },
+    // تأكد من أن الاستعلام يعمل فقط إذا كان المستخدم لديه صلاحية العرض ويوجد ID للمستخدم
+    enabled: hasPermission("tasks_view") && !!currentUserId,
+  });
+
+  // جلب المشاريع
   useEffect(() => {
     const fetchProjects = async () => {
+      setProjectsLoading(true);
       try {
         const res = await getProjects();
         setProjects(res.map((p) => ({ ...p, id: p.id ?? 0 })));
@@ -109,17 +122,41 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
           description: "تعذر جلب المشاريع",
           variant: "destructive",
         });
+      } finally {
+        setProjectsLoading(false);
       }
     };
-    fetchProjects();
-  }, [toast]);
+    if (hasPermission("tasks_view")) {
+      fetchProjects();
+    } else {
+      setProjectsLoading(false);
+    }
+  }, [toast, hasPermission]);
 
-  // ✅ جلب المستخدمين
+  // جلب المستخدمين
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    const fetchUsers = async () => {
+      setUsersLoading(true);
+      try {
+        await loadUsers();
+      } catch (error) {
+        toast({
+          title: "خطأ",
+          description: "تعذر جلب المستخدمين",
+          variant: "destructive",
+        });
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+    if (hasPermission("tasks_view")) {
+      fetchUsers();
+    } else {
+      setUsersLoading(false);
+    }
+  }, [loadUsers, hasPermission, toast]);
 
-  // ✅ إضافة
+  // إضافة
   const createMutation = useMutation({
     mutationFn: createTask,
     onSuccess: () => {
@@ -129,7 +166,7 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
     },
   });
 
-  // ✅ تحديث
+  // تحديث
   const updateMutation = useMutation({
     mutationFn: updateTask,
     onSuccess: () => {
@@ -140,7 +177,7 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
     },
   });
 
-  // ✅ حذف
+  // حذف
   const deleteMutation = useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
@@ -150,7 +187,7 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
     },
   });
 
-  // ✅ فلترة + بحث غير حساس لحالة الأحرف
+  // فلترة + بحث
   const filteredTasks = useMemo(
     () =>
       tasks.filter(
@@ -163,7 +200,7 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
     [tasks, searchTerm, filterStatus]
   );
 
-  // تقسيم المهام للـ Kanban + وضع متأخرة تلقائيًا
+  // تقسيم المهام للـ Kanban
   const tasksByStatus = useMemo(() => {
     const statuses = ["جديدة", "قيد التنفيذ", "مكتملة", "متأخرة"];
     const result: Record<string, TaskResponse[]> = {};
@@ -176,7 +213,9 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
         task.status !== "مكتملة" && task.due_date < today
           ? "متأخرة"
           : task.status;
-      result[statusKey].push(task);
+      if (result[statusKey]) {
+        result[statusKey].push(task);
+      }
     });
     return result;
   }, [filteredTasks]);
@@ -254,7 +293,10 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
       createMutation.mutate(form);
     }
   };
-  if (isLoading) {
+
+  const isPageLoading = tasksLoading || projectsLoading || usersLoading;
+
+  if (isPageLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <p className="text-lg text-muted-foreground">جاري تحميل المهام...</p>
@@ -482,7 +524,7 @@ const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
         ))}
 
       {/* Empty State */}
-      {filteredTasks.length === 0 && (
+      {!isPageLoading && filteredTasks.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <h3 className="text-lg font-medium">لا توجد مهام</h3>
           <p>لم يتم العثور على مهام تطابق معايير البحث</p>

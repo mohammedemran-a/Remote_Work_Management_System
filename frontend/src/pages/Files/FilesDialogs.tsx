@@ -74,7 +74,7 @@ interface Props {
   handleSaveFile: () => void;
   confirmDelete: () => void;
 
-  hasPermission: (permission: string) => boolean; // 👈 أضيفت فقط
+  hasPermission: (permission: string) => boolean;
 }
 
 // =============================
@@ -110,7 +110,6 @@ useEffect(() => {
   fetchProjects();
 }, []);
 
-  // 🔐 صلاحيات الحفظ
   const isSaveDisabled = selectedFile
     ? !hasPermission("files_edit")
     : !hasPermission("files_create");
@@ -132,7 +131,6 @@ useEffect(() => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* === Upload File === */}
             {!selectedFile && (
               <div className="space-y-2">
                 <Label>الملف *</Label>
@@ -146,7 +144,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* === File Name === */}
             <div className="space-y-2">
               <Label>اسم الملف *</Label>
               <Input
@@ -156,7 +153,6 @@ useEffect(() => {
               />
             </div>
 
-            {/* === File Type === */}
             <div className="space-y-2">
               <Label>نوع الملف</Label>
               <Select
@@ -180,7 +176,6 @@ useEffect(() => {
               </Select>
             </div>
 
-            {/* === Project === */}
             <div className="space-y-2">
               <Label>المشروع *</Label>
               <Select
@@ -203,7 +198,6 @@ useEffect(() => {
               </Select>
             </div>
 
-            {/* === Shared === */}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -220,7 +214,6 @@ useEffect(() => {
               إلغاء
             </Button>
 
-            {/* 🔐 زر الحفظ */}
             <Button onClick={handleSaveFile} disabled={isSaveDisabled}>
               {selectedFile ? "حفظ التعديلات" : "رفع الملف"}
             </Button>
@@ -243,7 +236,6 @@ useEffect(() => {
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
 
-            {/* 🔐 زر الحذف */}
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={!hasPermission("files_delete")}

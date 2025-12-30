@@ -1,3 +1,4 @@
+// src/pages/Files/FilesUI.tsx
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import {
   List,
   Calendar,
   User,
-  Lock,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -252,10 +252,11 @@ const FilesUI = ({
           {filteredFiles.map((file) => (
             <Card key={file.id}>
               <CardContent className="p-4 space-y-3">
+                {/* ✅======  بداية التعديل ======✅ */}
                 <div className="flex items-start justify-between">
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 items-start flex-1 min-w-0">
                     {getFileIcon(file.type)}
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm truncate">
                         {file.name}
                       </h4>
@@ -264,6 +265,7 @@ const FilesUI = ({
                       </p>
                     </div>
                   </div>
+                  {/* ✅====== نهاية التعديل ======✅ */}
 
                   {(hasPermission("files_edit") ||
                     hasPermission("files_delete")) && (

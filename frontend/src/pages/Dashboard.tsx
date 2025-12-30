@@ -65,7 +65,11 @@ const Dashboard = () => {
   ========================= */
 
   if (isLoading) {
-    return <p className="text-center mt-10">جاري تحميل لوحة التحكم...</p>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">جاري تحميل لوحة التحكم...</p>
+      </div>
+    );
   }
 
   if (isError || !data) {

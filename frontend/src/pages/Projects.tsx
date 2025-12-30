@@ -143,12 +143,16 @@ const Projects = () => {
     queryFn: async () => {
       const projectsData: ProjectAPIResponse[] = await getProjects();
 
-      // ✅ عرض المشاريع التي يكون المستخدم مشرف عليها فقط
-      const myProjectsData = projectsData.filter(
-        (p) => p.manager_id === currentUserId
-      );
+      // ✅====== التعديل المطلوب هنا ======✅
+      // تحقق إذا كان المستخدم لديه صلاحية عرض جميع المشاريع
+      const canViewAll = hasPermission("projects_view_all");
 
-      return myProjectsData.map((p) => {
+      // فلترة البيانات بناءً على الصلاحية
+      const filteredData = canViewAll
+        ? projectsData // إذا كان لديه الصلاحية، اعرض كل المشاريع
+        : projectsData.filter((p) => p.manager_id === currentUserId); // وإلا، اعرض فقط المشاريع التي يشرف عليها
+
+      return filteredData.map((p) => {
         const tasksCount =
           p.tasks_count ?? (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
         const teamMembersCount =

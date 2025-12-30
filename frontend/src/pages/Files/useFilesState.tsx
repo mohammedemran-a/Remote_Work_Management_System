@@ -1,6 +1,6 @@
 // src/pages/Files/useFilesState.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   getProjectFiles,
@@ -15,7 +15,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export const useFilesState = () => {
   const { toast } = useToast();
-  const { hasPermission } = useAuthStore();
+  // ✅ جلب الدالة والصلاحيات والمستخدم الحالي من useAuthStore
+  const { hasPermission, user } = useAuthStore();
 
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,13 +41,32 @@ export const useFilesState = () => {
     setFormDataState((prev) => ({ ...prev, ...data }));
 
   /**
-   * 📥 جلب الملفات (بدون صلاحيات)
+   * 📥 جلب الملفات مع تطبيق الصلاحيات
    */
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
+    // لا تقم بالجلب إذا لم يكن المستخدم موجودًا أو لا يملك صلاحية العرض
+    if (!user || !hasPermission("files_view")) {
+      setFiles([]);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await getProjectFiles();
-      setFiles(res.data);
+      const allFiles = (await getProjectFiles()).data;
+
+      // ✅====== التعديل المطلوب هنا ======✅
+      const canViewAll = hasPermission("files_view_all");
+
+      if (canViewAll) {
+        // إذا كان لديه صلاحية عرض الكل، اعرض جميع الملفات
+        setFiles(allFiles);
+      } else {
+        // وإلا، قم بفلترة الملفات لعرض ملفات المشاريع التي هو عضو فيها فقط
+        // نفترض أن `user.projects` يحتوي على IDs المشاريع التي ينتمي إليها المستخدم
+        const userProjectIds = user.projects?.map(p => p.id) || [];
+        const userFiles = allFiles.filter(file => userProjectIds.includes(file.project_id));
+        setFiles(userFiles);
+      }
     } catch (error) {
       toast({
         title: "خطأ",
@@ -56,12 +76,11 @@ export const useFilesState = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, hasPermission, toast]); // ✅ إضافة user و hasPermission إلى الاعتماديات
 
   useEffect(() => {
     fetchFiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchFiles]); // ✅ استدعاء fetchFiles عند التغيير
 
   const filteredFiles = files.filter((file) => {
     const matchesSearch = file.name
@@ -252,6 +271,6 @@ export const useFilesState = () => {
     handleDeleteFile,
     confirmDelete,
     downloadFile,
-    hasPermission, // متاح للواجهة
+    hasPermission,
   };
 };

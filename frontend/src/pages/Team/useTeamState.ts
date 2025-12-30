@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export const useTeamState = () => {
   const { toast } = useToast();
-  const { hasPermission, loading: authLoading } = useAuthStore();
+  // ✨ 1. استخراج بيانات المستخدم الحالي بالكامل (وليس فقط الصلاحيات)
+  const { hasPermission, loading: authLoading, user: currentUser } = useAuthStore();
 
   const [dataLoading, setDataLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -31,7 +32,6 @@ export const useTeamState = () => {
     project_ids: [] as number[]
   });
 
-  // ✨ تم تبسيط الدالة وإزالة التحقق المكرر
   const fetchData = useCallback(async () => {
     try {
       setDataLoading(true);
@@ -40,33 +40,45 @@ export const useTeamState = () => {
         fetchUsers(),
         getProjects(),
       ]);
-      setTeams(Array.isArray(teamsRes) ? teamsRes : []);
+
+      let processedTeams = Array.isArray(teamsRes) ? teamsRes : [];
+
+      // ✨ 2. تطبيق منطق التصفية الجديد
+      // إذا لم يكن لدى المستخدم صلاحية عرض كل الفرق، قم بالتصفية
+      if (currentUser && !hasPermission('teams_view_all')) {
+        processedTeams = processedTeams.filter(team => {
+          // الشرط الأول: هل المستخدم هو قائد الفريق؟
+          const isLeader = team.leader_id === currentUser.id;
+          // الشرط الثاني: هل المستخدم عضو في الفريق؟
+          const isMember = team.members?.some(member => member.id === currentUser.id) ?? false;
+          return isLeader || isMember;
+        });
+      }
+
+      setTeams(processedTeams);
       setAvailableUsers(Array.isArray(usersRes) ? usersRes : []);
       setAllProjects(Array.isArray(projectsRes) ? projectsRes : []);
+
     } catch (error) {
-      // رسالة الخطأ هنا ستظهر فقط إذا حدث خطأ في الشبكة أو الخادم
       toast({ title: "خطأ", description: "فشل في جلب بيانات الفرق", variant: "destructive" });
     } finally {
       setDataLoading(false);
     }
-  }, [toast]); // تم إزالة hasPermission من الاعتماديات
+  }, [toast, currentUser, hasPermission]); // 👈 إضافة currentUser و hasPermission للاعتماديات
 
   useEffect(() => {
     if (authLoading) {
       return; // انتظر انتهاء تحميل المصادقة
     }
     
-    // ✨ الآن نتحقق من الصلاحية هنا مرة واحدة فقط قبل استدعاء fetchData
     if (hasPermission('teams_view')) {
       fetchData();
     } else {
-      // إذا لم تكن هناك صلاحية، فقط أوقف التحميل.
-      // الرسالة ستظهر من مكون الصفحة الرئيسي.
       setDataLoading(false);
     }
   }, [authLoading, hasPermission, fetchData]);
 
-  // ... باقي الدوال تبقى كما هي ...
+  // ... باقي الدوال تبقى كما هي تمامًا ...
   const handleOpenDialog = (team: Team | null) => {
     setSelectedTeam(team);
     if (team) {
@@ -127,17 +139,32 @@ export const useTeamState = () => {
   };
 
   const filteredMembers = useMemo(() =>
-    (Array.isArray(teams) ? teams : []).filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    teams.filter(t => 
+      (t.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (t.leader?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+    ),
     [teams, searchTerm]
   );
 
   return {
     loading: authLoading || dataLoading,
-    teamMembers: teams, availableUsers, allProjects, filteredMembers,
-    searchTerm, setSearchTerm, isAddDialogOpen, setIsAddDialogOpen,
-    isDeleteDialogOpen, setIsDeleteDialogOpen, formData, setFormData,
-    selectedMember: selectedTeam, handleOpenDialog, handleSaveMember,
+    teamMembers: teams, // هذه القائمة أصبحت الآن مصفاة
+    availableUsers,
+    allProjects,
+    filteredMembers, // هذه القائمة ستتم تصفيتها مرة أخرى بناءً على البحث
+    searchTerm,
+    setSearchTerm,
+    isAddDialogOpen,
+    setIsAddDialogOpen,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    formData,
+    setFormData,
+    selectedMember: selectedTeam,
+    handleOpenDialog,
+    handleSaveMember,
     handleDeleteMember: (id: number) => { setTeamToDelete(id); setIsDeleteDialogOpen(true); },
-    confirmDelete, getRoleColor: () => "bg-blue-100",
+    confirmDelete,
+    getRoleColor: () => "bg-blue-100",
   };
 };

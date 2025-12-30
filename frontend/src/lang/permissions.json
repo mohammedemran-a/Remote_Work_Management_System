@@ -45,6 +45,7 @@
   "activities_delete": "حذف الأنشطة",
 
   "teams_view": "عرض الفرق",
+  "teams_view_all": "عرض جميع الفرق",
   "teams_create": "إنشاء فريق",
   "teams_edit": "تعديل الفرق",
   "teams_delete": "حذف الفرق"

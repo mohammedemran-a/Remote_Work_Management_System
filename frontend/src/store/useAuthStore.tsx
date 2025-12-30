@@ -7,12 +7,20 @@ import {
   getCurrentUser,
 } from "@/api/auth";
 
+// ✅ الخطوة 1: أضف تعريفًا للمشاريع داخل كائن المستخدم
+interface UserProject {
+  id: number;
+  name: string;
+  // يمكنك إضافة خصائص أخرى حسب ما يرسله الـ API
+}
+
 interface User {
   id: number;
   name: string;
   email: string;
   roles: string[];
   permissions: string[];
+  projects?: UserProject[]; // ✅ الخطوة 2: أضف الخاصية هنا
 }
 
 interface AuthState {
@@ -118,7 +126,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await getCurrentUser();
 
       set({
-        user: res, // ✅ التصحيح هنا
+        user: res,
         token: localStorage.getItem("token"),
         loading: false,
       });
