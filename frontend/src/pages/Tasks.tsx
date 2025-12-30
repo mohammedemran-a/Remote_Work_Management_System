@@ -85,13 +85,18 @@ const Tasks = () => {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
-  // ✅ جلب المهام (يعرض فقط إذا كانت لدى المستخدم صلاحية)
-  const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
-    queryKey: ["tasks"],
-    queryFn: getTasks,
-    enabled: hasPermission("tasks_view"),
-  });
+ const currentUserId = useAuthStore((state) => state.user?.id);
 
+// جلب المهام (يعرض فقط المهام المخصصة للمستخدم)
+const { data: tasks = [], isLoading } = useQuery<TaskResponse[]>({
+  queryKey: ["tasks"],
+  queryFn: async () => {
+    const allTasks = await getTasks();
+    // تصفية المهام لتظهر فقط المهام الخاصة بالمستخدم
+    return allTasks.filter((task) => task.assigned_to === currentUserId);
+  },
+  enabled: hasPermission("tasks_view"),
+});
   // ✅ جلب المشاريع
   useEffect(() => {
     const fetchProjects = async () => {

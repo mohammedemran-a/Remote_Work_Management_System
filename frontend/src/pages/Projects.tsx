@@ -105,8 +105,8 @@ const Projects = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -141,18 +141,18 @@ const Projects = () => {
   } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: async () => {
-      // getProjects() يرجع ProjectAPIResponse[] مباشرة
       const projectsData: ProjectAPIResponse[] = await getProjects();
 
-      return projectsData.map((p) => {
+      // ✅ عرض المشاريع التي يكون المستخدم مشرف عليها فقط
+      const myProjectsData = projectsData.filter(
+        (p) => p.manager_id === currentUserId
+      );
+
+      return myProjectsData.map((p) => {
         const tasksCount =
-          p.tasks_count ??
-          (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
-
+          p.tasks_count ?? (Array.isArray(p.tasks) ? p.tasks.length : p.tasks ?? 0);
         const teamMembersCount =
-          p.users_count ??
-          (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
-
+          p.users_count ?? (Array.isArray(p.users) ? p.users.length : p.teamMembers ?? 0);
         const completedTasksCount = p.completedTasks ?? 0;
 
         return {
@@ -219,10 +219,7 @@ const Projects = () => {
   });
 
   const handleOpenDialog = (project?: Project) => {
-    if (
-      !hasPermission(project ? "projects_edit" : "projects_create") &&
-      !project
-    )
+    if (!hasPermission(project ? "projects_edit" : "projects_create") && !project)
       return;
 
     if (project) {
@@ -244,7 +241,7 @@ const Projects = () => {
         status: "نشط",
         start_date: "",
         end_date: "",
-        manager_id: 0,
+        manager_id: currentUserId, // افتراضيًا المستخدم الحالي كمشرف
       });
       setSupervisorSearch("");
     }
@@ -305,7 +302,6 @@ const Projects = () => {
     }
   };
 
-  // ✅ تم تعديل هذا الجزء لتوسيط رسالة التحميل
   if (isLoading || usersLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
