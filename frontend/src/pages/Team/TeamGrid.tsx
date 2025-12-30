@@ -1,17 +1,20 @@
+// src/pages/Team/TeamGrid.tsx
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreVertical, Layout, Users, Trophy, Trash2, Edit } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MoreVertical, Layout, Users, Trash2, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Team } from "@/api/team";
+import { useAuthStore } from "@/store/useAuthStore"; // ✨ 1. استيراد
 
 interface TeamGridProps {
   loading: boolean;
-  filteredMembers: Team[]; // أصبحت الآن مصفوفة من الفرق
+  filteredMembers: Team[];
   handleOpenDialog: (team: Team) => void;
   handleDeleteMember: (id: number) => void;
-  getRoleColor: (role: string) => string;
+  getRoleColor: (role: string) => string; // أبقيتها للتوافقية
 }
 
 const TeamGrid = ({
@@ -20,7 +23,8 @@ const TeamGrid = ({
   handleOpenDialog,
   handleDeleteMember,
 }: TeamGridProps) => {
-  
+  const { hasPermission } = useAuthStore(); // ✨ 2. استخراج الدالة
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -49,23 +53,32 @@ const TeamGrid = ({
                 <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{team.description || "لا يوجد وصف"}</p>
               </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleOpenDialog(team)} className="gap-2">
-                  <Edit className="h-4 w-4" /> تعديل
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDeleteMember(team.id)} className="gap-2 text-destructive">
-                  <Trash2 className="h-4 w-4" /> حذف
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* ✨ 3. إظهار القائمة فقط إذا كان هناك صلاحية للتعديل أو الحذف */}
+            {(hasPermission('teams_edit') || hasPermission('teams_delete')) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {/* ✨ 4. إظهار زر التعديل حسب الصلاحية */}
+                  {hasPermission('teams_edit') && (
+                    <DropdownMenuItem onClick={() => handleOpenDialog(team)} className="gap-2">
+                      <Edit className="h-4 w-4" /> تعديل
+                    </DropdownMenuItem>
+                  )}
+                  {/* ✨ 5. إظهار زر الحذف حسب الصلاحية */}
+                  {hasPermission('teams_delete') && (
+                    <DropdownMenuItem onClick={() => handleDeleteMember(team.id)} className="gap-2 text-destructive">
+                      <Trash2 className="h-4 w-4" /> حذف
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </CardHeader>
 
           <CardContent className="space-y-4">
-            {/* عرض القائد */}
+            {/* ... باقي الكود بدون تغيير ... */}
             <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-amber-100 text-amber-700 text-xs">قائد</AvatarFallback>
@@ -75,8 +88,6 @@ const TeamGrid = ({
                 <span className="text-sm font-medium">{team.leader?.name || "غير معين"}</span>
               </div>
             </div>
-
-            {/* إحصائيات الفريق */}
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -91,8 +102,6 @@ const TeamGrid = ({
                 <span className="font-semibold text-sm">{team.members?.length || 0} أعضاء</span>
               </div>
             </div>
-
-            {/* عرض شارات المشاريع */}
             <div className="flex flex-wrap gap-1 mt-2">
               {team.projects?.slice(0, 3).map(project => (
                 <Badge key={project.id} variant="secondary" className="text-[10px] px-2 py-0">

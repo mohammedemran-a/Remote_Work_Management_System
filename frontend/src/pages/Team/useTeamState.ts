@@ -1,12 +1,17 @@
+// src/pages/Team/useTeamState.ts
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { getTeams, createTeam, deleteTeam, Team } from "@/api/team";
+import { getTeams, createTeam, deleteTeam, Team, TeamPayload } from "@/api/team";
 import { fetchUsers, User } from "@/api/users";
 import { getProjects, Project } from "@/api/project";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export const useTeamState = () => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const { hasPermission, loading: authLoading } = useAuthStore();
+
+  const [dataLoading, setDataLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -26,27 +31,42 @@ export const useTeamState = () => {
     project_ids: [] as number[]
   });
 
+  // ✨ تم تبسيط الدالة وإزالة التحقق المكرر
   const fetchData = useCallback(async () => {
     try {
-      setLoading(true);
+      setDataLoading(true);
       const [teamsRes, usersRes, projectsRes] = await Promise.all([
         getTeams(),
         fetchUsers(),
-        getProjects(), 
+        getProjects(),
       ]);
-
       setTeams(Array.isArray(teamsRes) ? teamsRes : []);
       setAvailableUsers(Array.isArray(usersRes) ? usersRes : []);
       setAllProjects(Array.isArray(projectsRes) ? projectsRes : []);
     } catch (error) {
-      toast({ title: "خطأ", description: "فشل في جلب البيانات", variant: "destructive" });
+      // رسالة الخطأ هنا ستظهر فقط إذا حدث خطأ في الشبكة أو الخادم
+      toast({ title: "خطأ", description: "فشل في جلب بيانات الفرق", variant: "destructive" });
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
-  }, [toast]);
+  }, [toast]); // تم إزالة hasPermission من الاعتماديات
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (authLoading) {
+      return; // انتظر انتهاء تحميل المصادقة
+    }
+    
+    // ✨ الآن نتحقق من الصلاحية هنا مرة واحدة فقط قبل استدعاء fetchData
+    if (hasPermission('teams_view')) {
+      fetchData();
+    } else {
+      // إذا لم تكن هناك صلاحية، فقط أوقف التحميل.
+      // الرسالة ستظهر من مكون الصفحة الرئيسي.
+      setDataLoading(false);
+    }
+  }, [authLoading, hasPermission, fetchData]);
 
+  // ... باقي الدوال تبقى كما هي ...
   const handleOpenDialog = (team: Team | null) => {
     setSelectedTeam(team);
     if (team) {
@@ -68,21 +88,20 @@ export const useTeamState = () => {
       toast({ title: "تنبيه", description: "يرجى إكمال البيانات الأساسية", variant: "destructive" });
       return;
     }
+    if (!hasPermission('teams_create')) {
+      toast({ title: "وصول مرفوض", description: "ليس لديك صلاحية لإنشاء فرق جديدة.", variant: "destructive" });
+      return;
+    }
     try {
-      const payload = {
+      const payload: TeamPayload = {
         name: formData.name,
         description: formData.description,
         leader_id: Number(formData.leader_id),
         project_ids: formData.project_ids,
-        member_ids: formData.member_ids 
+        member_ids: formData.member_ids
       };
-
-      if (selectedTeam) {
-        // يمكن إضافة دالة تحديث هنا
-      } else {
-        await createTeam(payload as any);
-        toast({ title: "تم بنجاح", description: "تم إنشاء الفريق وربط الأعضاء والمشاريع" });
-      }
+      await createTeam(payload);
+      toast({ title: "تم بنجاح", description: "تم إنشاء الفريق بنجاح" });
       setIsAddDialogOpen(false);
       fetchData();
     } catch (error) {
@@ -91,6 +110,11 @@ export const useTeamState = () => {
   };
 
   const confirmDelete = async () => {
+    if (!hasPermission('teams_delete')) {
+      toast({ title: "وصول مرفوض", description: "ليس لديك صلاحية لحذف الفرق.", variant: "destructive" });
+      setIsDeleteDialogOpen(false);
+      return;
+    }
     if (!teamToDelete) return;
     try {
       await deleteTeam(teamToDelete);
@@ -102,13 +126,14 @@ export const useTeamState = () => {
     }
   };
 
-  const filteredMembers = useMemo(() => 
-    (Array.isArray(teams) ? teams : []).filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())), 
+  const filteredMembers = useMemo(() =>
+    (Array.isArray(teams) ? teams : []).filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())),
     [teams, searchTerm]
   );
 
   return {
-    loading, teamMembers: teams, availableUsers, allProjects, filteredMembers,
+    loading: authLoading || dataLoading,
+    teamMembers: teams, availableUsers, allProjects, filteredMembers,
     searchTerm, setSearchTerm, isAddDialogOpen, setIsAddDialogOpen,
     isDeleteDialogOpen, setIsDeleteDialogOpen, formData, setFormData,
     selectedMember: selectedTeam, handleOpenDialog, handleSaveMember,

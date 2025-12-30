@@ -34,7 +34,23 @@ const UsersPage = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
 
   if (loading) {
-    return <div className="text-center py-10">جاري تحميل البيانات...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          جاري تحميل المستخدمين...
+        </p>
+      </div>
+    );
+  }
+
+  if (!hasPermission("users_view")) {
+    return (
+      <div className="flex items-center justify-center h-screen" dir="rtl">
+        <p className="text-red-600 text-xl font-semibold">
+          🚫 ليس لديك صلاحية الوصول إلى صفحة المستخدمين
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -43,7 +59,9 @@ const UsersPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">إدارة المستخدمين</h1>
-          <p className="text-muted-foreground">إضافة وتعديل المستخدمين وتعيين الأدوار والأقسام.</p>
+          <p className="text-muted-foreground">
+            إضافة وتعديل المستخدمين وتعيين الأدوار والأقسام.
+          </p>
         </div>
 
         {/* زر إضافة مستخدم يظهر فقط عند وجود صلاحية users_create */}

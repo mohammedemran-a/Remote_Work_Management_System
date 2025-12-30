@@ -42,5 +42,10 @@
   "files_delete": "حذف الملفات",
   
   "activities_view": "عرض صفحة الأنشطة",
-  "activities_delete": "حذف الأنشطة"
+  "activities_delete": "حذف الأنشطة",
+
+  "teams_view": "عرض الفرق",
+  "teams_create": "إنشاء فريق",
+  "teams_edit": "تعديل الفرق",
+  "teams_delete": "حذف الفرق"
 }

@@ -50,6 +50,11 @@ class RolePermissionSeeder extends Seeder
             "files_delete",
             "activities_view",
             "activities_delete",
+            "teams_view",
+            "teams_view_all",
+            "teams_create",
+            "teams_edit",
+            "teams_delete",
         ];
 
         // 🔹 إنشاء الصلاحيات

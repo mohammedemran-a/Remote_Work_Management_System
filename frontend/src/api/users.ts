@@ -16,19 +16,17 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  department: string | null;
   roles: Role[];
   created_at: string;
   updated_at: string;
 }
 
-// 2. واجهة الحمولة (Payload) التي يتم إرسالها إلى الـ API (النسخة المصححة)
+// 2. واجهة الحمولة (Payload) التي يتم إرسالها إلى الـ API
 export interface UserPayload {
   name: string;
   email: string;
   password?: string;
-  department?: string;
-  roles: string[]; // ✅✅ التعديل الوحيد والمهم: يجب أن تكون مصفوفة من النصوص (أسماء الأدوار)
+  roles: string[]; // أسماء الأدوار
 }
 
 // واجهة لرسائل الخطأ من الـ API
@@ -43,12 +41,13 @@ interface ApiError {
 export const fetchUsers = async (): Promise<User[]> => {
   try {
     const response = await api.get<{ data: User[] }>("/users");
-    // 🟢 التأكد من التعامل مع الاستجابة المغلفة
-    return response.data.data || response.data; 
+    return response.data.data || response.data;
   } catch (error) {
     const err = error as AxiosError<ApiError>;
     console.error("Error fetching users:", err.response?.data);
-    throw err.response?.data || { message: "خطأ غير معروف في جلب المستخدمين" };
+    throw err.response?.data || {
+      message: "خطأ غير معروف في جلب المستخدمين",
+    };
   }
 };
 
@@ -60,19 +59,26 @@ export const createUser = async (payload: UserPayload): Promise<User> => {
   } catch (error) {
     const err = error as AxiosError<ApiError>;
     console.error("Error creating user:", err.response?.data);
-    throw err.response?.data || { message: "خطأ غير معروف في إنشاء المستخدم" };
+    throw err.response?.data || {
+      message: "خطأ غير معروف في إنشاء المستخدم",
+    };
   }
 };
 
 // --- تحديث مستخدم موجود ---
-export const updateUser = async (id: number, payload: Partial<UserPayload>): Promise<User> => {
+export const updateUser = async (
+  id: number,
+  payload: Partial<UserPayload>
+): Promise<User> => {
   try {
     const response = await api.put<{ data: User }>(`/users/${id}`, payload);
     return response.data.data;
   } catch (error) {
     const err = error as AxiosError<ApiError>;
     console.error("Error updating user:", err.response?.data);
-    throw err.response?.data || { message: "خطأ غير معروف في تحديث المستخدم" };
+    throw err.response?.data || {
+      message: "خطأ غير معروف في تحديث المستخدم",
+    };
   }
 };
 
@@ -83,6 +89,8 @@ export const deleteUser = async (id: number): Promise<void> => {
   } catch (error) {
     const err = error as AxiosError<ApiError>;
     console.error("Error deleting user:", err.response?.data);
-    throw err.response?.data || { message: "خطأ غير معروف في حذف المستخدم" };
+    throw err.response?.data || {
+      message: "خطأ غير معروف في حذف المستخدم",
+    };
   }
 };

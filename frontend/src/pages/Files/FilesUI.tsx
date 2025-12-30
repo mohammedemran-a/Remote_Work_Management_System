@@ -132,14 +132,11 @@ const FilesUI = ({
   downloadFile,
   hasPermission,
 }: Props) => {
-  /* 🔐 Page Guard */
   if (!loading && !hasPermission("files_view")) {
     return (
-      <div className="text-center py-12">
-        <Lock className="mx-auto h-12 w-12 text-destructive" />
-        <h3 className="mt-4 text-lg font-medium text-destructive">غير مصرح لك</h3>
-        <p className="mt-2 text-muted-foreground">
-          ليس لديك الصلاحية اللازمة لعرض هذه الصفحة
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          ليس لديك صلاحية عرض صفحة الملفات
         </p>
       </div>
     );
@@ -173,7 +170,10 @@ const FilesUI = ({
 
           {/* Upload Permission */}
           {hasPermission("files_create") && (
-            <Button className="flex items-center gap-2" onClick={() => handleOpenDialog()}>
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => handleOpenDialog()}
+            >
               <Upload className="h-4 w-4" />
               رفع ملف
             </Button>
@@ -240,7 +240,11 @@ const FilesUI = ({
       </div>
 
       {/* Loading */}
-      {loading && <div className="text-center py-10 text-muted-foreground">جاري تحميل الملفات...</div>}
+      {loading && (
+        <div className="text-center py-10 text-muted-foreground">
+          جاري تحميل الملفات...
+        </div>
+      )}
 
       {/* Grid View */}
       {!loading && viewMode === "grid" && (
@@ -252,12 +256,17 @@ const FilesUI = ({
                   <div className="flex gap-3">
                     {getFileIcon(file.type)}
                     <div>
-                      <h4 className="font-medium text-sm truncate">{file.name}</h4>
-                      <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
+                      <h4 className="font-medium text-sm truncate">
+                        {file.name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {formatSize(file.size)}
+                      </p>
                     </div>
                   </div>
 
-                  {(hasPermission("files_edit") || hasPermission("files_delete")) && (
+                  {(hasPermission("files_edit") ||
+                    hasPermission("files_delete")) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -265,12 +274,16 @@ const FilesUI = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => downloadFile(file.id, file.name)}>
+                        <DropdownMenuItem
+                          onClick={() => downloadFile(file.id, file.name)}
+                        >
                           <Download className="ml-2 h-4 w-4" /> تحميل
                         </DropdownMenuItem>
 
                         {hasPermission("files_edit") && (
-                          <DropdownMenuItem onClick={() => handleOpenDialog(file)}>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDialog(file)}
+                          >
                             تعديل البيانات
                           </DropdownMenuItem>
                         )}
@@ -328,7 +341,9 @@ const FilesUI = ({
         <div className="text-center py-12">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">لا توجد ملفات</h3>
-          <p className="mt-2 text-muted-foreground">لم يتم العثور على ملفات تطابق البحث</p>
+          <p className="mt-2 text-muted-foreground">
+            لم يتم العثور على ملفات تطابق البحث
+          </p>
         </div>
       )}
     </>

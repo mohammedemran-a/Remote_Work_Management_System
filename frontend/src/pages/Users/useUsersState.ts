@@ -1,5 +1,3 @@
-// src/pages/Users/useUsersState.ts
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,7 +16,6 @@ export interface FormData {
   name: string;
   email: string;
   password: string;
-  department: string;
   roles: number[];
 }
 
@@ -54,7 +51,6 @@ export const useUsersState = () => {
     name: "",
     email: "",
     password: "",
-    department: "",
     roles: [],
   });
 
@@ -91,9 +87,7 @@ export const useUsersState = () => {
       users.filter(
         (user) =>
           user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (user.department &&
-            user.department.toLowerCase().includes(searchTerm.toLowerCase()))
+          user.email.toLowerCase().includes(searchTerm.toLowerCase())
       ),
     [users, searchTerm]
   );
@@ -106,7 +100,6 @@ export const useUsersState = () => {
         name: user.name,
         email: user.email,
         password: "",
-        department: user.department || "",
         roles: user.roles?.map((r) => r.id) || [],
       });
     } else {
@@ -115,7 +108,6 @@ export const useUsersState = () => {
         name: "",
         email: "",
         password: "",
-        department: "",
         roles: roles.length > 0 ? [roles[0].id] : [],
       });
     }
@@ -125,11 +117,17 @@ export const useUsersState = () => {
   /* ============== SAVE (CREATE/UPDATE) ============== */
   const handleSaveUser = async () => {
     if (selectedUser && !canEdit) {
-      toast({ title: "🚫 ليس لديك صلاحية تعديل المستخدم", variant: "destructive" });
+      toast({
+        title: "🚫 ليس لديك صلاحية تعديل المستخدم",
+        variant: "destructive",
+      });
       return;
     }
     if (!selectedUser && !canCreate) {
-      toast({ title: "🚫 ليس لديك صلاحية إضافة مستخدم جديد", variant: "destructive" });
+      toast({
+        title: "🚫 ليس لديك صلاحية إضافة مستخدم جديد",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -149,7 +147,6 @@ export const useUsersState = () => {
     const payload: UserPayload = {
       name: formData.name,
       email: formData.email,
-      department: formData.department || undefined,
       roles: roleNames,
       password: formData.password || undefined,
     };
@@ -183,7 +180,10 @@ export const useUsersState = () => {
   /* ============== DELETE ============== */
   const confirmDelete = async () => {
     if (!canDelete) {
-      toast({ title: "🚫 ليس لديك صلاحية حذف المستخدم", variant: "destructive" });
+      toast({
+        title: "🚫 ليس لديك صلاحية حذف المستخدم",
+        variant: "destructive",
+      });
       return;
     }
     if (!userToDelete) return;

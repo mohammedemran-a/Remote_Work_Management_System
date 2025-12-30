@@ -24,7 +24,6 @@ import Auth from "./pages/Auth";
 import Chat from "./pages/Chat/index";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
-import ChatRoom from "./pages/ChatRoom";
 import RolesPermissions from "./pages/RolesPermissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Notifications from "./pages/Notifications";
@@ -87,7 +86,6 @@ const App = () => {
                 <Route path="users" element={<Users />} />
                 <Route path="team" element={<Team />} />
                 <Route path="chat" element={<Chat />} />
-                <Route path="chat/:id" element={<ChatRoom />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="roles" element={<RolesPermissions />} />

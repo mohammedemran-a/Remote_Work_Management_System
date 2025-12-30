@@ -95,20 +95,20 @@ const FilesDialogs = ({
   hasPermission,
 }: Props) => {
   const [projects, setProjects] = useState<Project[]>([]);
+  
+useEffect(() => {
+  const fetchProjects = async () => {
+    try {
+      const projects = await getProjects();
+      setProjects(projects);
+    } catch (error) {
+      console.error("Failed to fetch projects", error);
+      setProjects([]);
+    }
+  };
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const projects = await getProjects();
-        setProjects(projects);
-      } catch (error) {
-        console.error("Failed to fetch projects", error);
-        setProjects([]);
-      }
-    };
-
-    fetchProjects();
-  }, []);
+  fetchProjects();
+}, []);
 
   // 🔐 صلاحيات الحفظ
   const isSaveDisabled = selectedFile

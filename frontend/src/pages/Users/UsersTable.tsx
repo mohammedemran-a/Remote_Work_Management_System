@@ -1,5 +1,3 @@
-// src/pages/Users/UsersTable.tsx
-
 import {
   Table,
   TableBody,
@@ -21,7 +19,7 @@ import { MoreVertical, Edit, Trash2 } from "lucide-react";
 import { User } from "@/api/users";
 import { useAuthStore } from "@/store/useAuthStore";
 
-// واجهة الخصائص (Props) التي يتلقاها المكون
+// واجهة الخصائص (Props)
 interface UsersTableProps {
   users: User[];
   onEdit: (user: User) => void;
@@ -34,7 +32,7 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
   const canEdit = hasPermission("users_edit");
   const canDelete = hasPermission("users_delete");
 
-  // دالة للحصول على الأحرف الأولى من الاسم
+  // دالة استخراج الأحرف الأولى من الاسم
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -54,7 +52,6 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
             <TableRow>
               <TableHead className="text-right">المستخدم</TableHead>
               <TableHead className="text-right">البريد الإلكتروني</TableHead>
-              <TableHead className="text-right">القسم</TableHead>
               <TableHead className="text-right">الدور</TableHead>
               <TableHead className="text-center">الإجراءات</TableHead>
             </TableRow>
@@ -62,7 +59,7 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                {/* خلية المستخدم (الأفاتار والاسم) */}
+                {/* المستخدم */}
                 <TableCell className="flex items-center gap-3 font-medium">
                   <Avatar>
                     <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
@@ -70,15 +67,12 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
                   {user.name}
                 </TableCell>
 
-                {/* خلية البريد الإلكتروني */}
-                <TableCell className="text-muted-foreground">{user.email}</TableCell>
-
-                {/* خلية القسم */}
+                {/* البريد الإلكتروني */}
                 <TableCell className="text-muted-foreground">
-                  {user.department || "غير محدد"}
+                  {user.email}
                 </TableCell>
 
-                {/* خلية الدور */}
+                {/* الأدوار */}
                 <TableCell>
                   {user.roles.map((role) => (
                     <span
@@ -90,7 +84,7 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
                   ))}
                 </TableCell>
 
-                {/* خلية الإجراءات */}
+                {/* الإجراءات */}
                 <TableCell className="text-center">
                   {(canEdit || canDelete) && (
                     <DropdownMenu>
@@ -123,6 +117,7 @@ export const UsersTable = ({ users, onEdit, onDelete }: UsersTableProps) => {
             ))}
           </TableBody>
         </Table>
+
         {users.length === 0 && (
           <div className="text-center py-10 text-muted-foreground">
             لا يوجد مستخدمون لعرضهم.
