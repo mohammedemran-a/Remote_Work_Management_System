@@ -16,7 +16,6 @@ import {
 import { User, fetchUsers } from "@/api/users";
 import { getProjects } from "@/api/project";
 
-// واجهة مبسطة للمشروع، خاصة بالدردشة
 interface Project {
   id: number;
   name: string;
@@ -45,9 +44,28 @@ export const useChatState = () => {
         fetchUsers(),
         getProjects(),
       ]);
-      setConversations(convosData || []);
+
+      // 🟢 التعديل هنا: جلب الرسالة الأخيرة لكل محادثة عند التحميل الأول
+      const conversationsWithLastMessages = await Promise.all(
+        (convosData || []).map(async (conv: Conversation) => {
+          // إذا كانت الرسالة الأخيرة غير موجودة في بيانات المحادثة، نجلبها
+          if (!conv.last_message) {
+            try {
+              const msgs = await getMessages(conv.id);
+              if (msgs && msgs.length > 0) {
+                return { ...conv, last_message: msgs[msgs.length - 1] };
+              }
+            } catch (e) {
+              console.error("Error fetching last message for convo", conv.id, e);
+            }
+          }
+          return conv;
+        })
+      );
+
+      setConversations(conversationsWithLastMessages);
       setAllUsers(usersData || []);
-     setAllProjects(projectsResponse);
+      setAllProjects(projectsResponse);
     } catch (error) {
       toast({ title: "خطأ", description: "فشل في جلب البيانات الأولية للدردشة.", variant: "destructive" });
       setConversations([]);
@@ -72,6 +90,17 @@ export const useChatState = () => {
       try {
         const messagesData = await getMessages(currentConversationId);
         setMessages(messagesData || []);
+
+        if (messagesData && messagesData.length > 0) {
+          const lastMsg = messagesData[messagesData.length - 1];
+          setConversations(prev => 
+            prev.map(conv => 
+              conv.id === currentConversationId 
+                ? { ...conv, last_message: lastMsg } 
+                : conv
+            )
+          );
+        }
       } catch (error) {
         toast({ title: "خطأ", description: "فشل في جلب الرسائل.", variant: "destructive" });
       } finally {
@@ -86,6 +115,14 @@ export const useChatState = () => {
     try {
       const newMessage = await sendMessage(currentConversationId, payload);
       setMessages(prev => [...prev, newMessage]);
+      
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === currentConversationId 
+            ? { ...conv, last_message: newMessage } 
+            : conv
+        )
+      );
     } catch (error) {
       toast({ title: "خطأ", description: "فشل في إرسال الرسالة.", variant: "destructive" });
     }

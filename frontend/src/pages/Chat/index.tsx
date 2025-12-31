@@ -28,7 +28,15 @@ const ChatPage = () => {
   } = useChatState();
 
   return (
-    <div className="h-screen flex bg-background" dir="rtl">
+    /* الإصلاح الجذري: 
+       1. إزالة fixed و top-64 لأنها تسبب تداخلاً مع شريط الموقع.
+       2. استخدام flex-1 لتأخذ الحاوية ما تبقى من عرض الشاشة بجانب شريط الموقع.
+       3. استخدام h-[calc(100vh-64px)] لضمان الالتزام بطول الشاشة فقط.
+    */
+    <div 
+      className="flex-1 flex bg-background overflow-hidden h-[calc(100vh-64px)] w-full" 
+      dir="rtl"
+    >
       <ChatSidebar
         conversations={conversations}
         currentConversationId={currentConversation?.id || null}
@@ -52,14 +60,11 @@ const ChatPage = () => {
         isNewConversationOpen={isNewConversationOpen}
         onNewConversationOpenChange={setIsNewConversationOpen}
         onNewConversationSave={handleCreateConversation}
-        
         isAddMembersOpen={isAddMembersOpen}
         onAddMembersOpenChange={setIsAddMembersOpen}
         onAddMembersSave={handleAddMembers}
-
         allUsers={allUsers}
         allProjects={allProjects}
-        // 🟢 التعديل الوحيد هنا: غيرنا 'members' إلى 'users'
         existingMemberIds={currentConversation?.users?.map(m => m.id) || []}
       />
     </div>
