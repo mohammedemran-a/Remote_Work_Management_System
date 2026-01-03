@@ -1,5 +1,6 @@
 // src/pages/ActivityLogs.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -98,75 +99,93 @@ const formatDate = (dateString: string) => {
 
 // ===================== COMPONENT =====================
 const ActivityLogs = () => {
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { toast } = useToast();
-  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const queryClient = useQueryClient();
+  const { hasPermission } = useAuthStore();
 
   const canView = hasPermission("activities_view");
   const canDelete = hasPermission("activities_delete");
 
-  const loadLogs = useCallback(async () => {
-    setIsLoading(true); // تبدأ التحميل
-    try {
-      const response = await getActivityLogs(searchQuery, filterType);
+  // ✨ 1. استخدام useQuery لجلب البيانات وإدارتها
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ["activityLogs", searchQuery, filterType],
+    queryFn: () => getActivityLogs(searchQuery, filterType),
+    select: (response) => {
       const records = response.data as ActivityLogResponse[];
-      setLogs(
-        records.map((log) => ({
-          id: log.id,
-          user: log.user?.name || "غير معروف",
-          action: log.action,
-          type: (
-            [
-              "login",
-              "logout",
-              "create",
-              "edit",
-              "delete",
-              "upload",
-            ] as ActivityType[]
-          ).includes(log.type as ActivityType)
-            ? (log.type as ActivityType)
-            : "upload",
-          target: log.target || "-",
-          timestamp: log.created_at,
-        }))
-      );
-    } catch {
+      return records.map((log) => ({
+        id: log.id,
+        user: log.user?.name || "غير معروف",
+        action: log.action,
+        type: (
+          [
+            "login",
+            "logout",
+            "create",
+            "edit",
+            "delete",
+            "upload",
+          ] as ActivityType[]
+        ).includes(log.type as ActivityType)
+          ? (log.type as ActivityType)
+          : "upload",
+        target: log.target || "-",
+        timestamp: log.created_at,
+      }));
+    },
+    enabled: canView,
+    staleTime: 1000 * 60 * 5, // تخزين البيانات لمدة 5 دقائق
+  });
+
+  // ✨ 2. استخدام useMutation لحذف سجل واحد
+  const deleteSingleMutation = useMutation({
+    mutationFn: deleteActivityLog,
+    onSuccess: (_, deletedId) => {
+      toast({ title: "تم الحذف", description: "تم حذف السجل بنجاح" });
+      setSelectedIds((prev) => prev.filter((id) => id !== deletedId));
+      queryClient.invalidateQueries({ queryKey: ["activityLogs"] });
+    },
+    onError: () => {
       toast({
         title: "خطأ",
-        description: "فشل تحميل السجلات",
+        description: "فشل حذف السجل",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false); // انتهاء التحميل
-    }
-  }, [searchQuery, filterType, toast]);
+    },
+  });
 
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+  // ✨ 3. استخدام useMutation لحذف سجلات متعددة
+  const deleteMultipleMutation = useMutation({
+    mutationFn: deleteMultipleActivityLogs,
+    onSuccess: (_, deletedIds) => {
+      toast({
+        title: "تم الحذف",
+        description: `تم حذف ${deletedIds.length} سجل بنجاح`,
+      });
+      setSelectedIds([]);
+      queryClient.invalidateQueries({ queryKey: ["activityLogs"] });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "فشل حذف السجلات المحددة",
+        variant: "destructive",
+      });
+    },
+  });
 
   // ===================== أيقونات الإجراء =====================
   const getActionIcon = (type: ActivityType) => {
     switch (type) {
-      case "login":
-        return <LogIn className="h-4 w-4" />;
-      case "logout":
-        return <LogOut className="h-4 w-4" />;
-      case "create":
-        return <FolderPlus className="h-4 w-4" />;
-      case "edit":
-        return <Edit className="h-4 w-4" />;
-      case "delete":
-        return <Trash2 className="h-4 w-4" />;
-      case "upload":
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <Activity className="h-4 w-4" />;
+      case "login": return <LogIn className="h-4 w-4" />;
+      case "logout": return <LogOut className="h-4 w-4" />;
+      case "create": return <FolderPlus className="h-4 w-4" />;
+      case "edit": return <Edit className="h-4 w-4" />;
+      case "delete": return <Trash2 className="h-4 w-4" />;
+      case "upload": return <FileText className="h-4 w-4" />;
+      default: return <Activity className="h-4 w-4" />;
     }
   };
 
@@ -180,21 +199,22 @@ const ActivityLogs = () => {
       delete: { variant: "destructive", label: "حذف" },
       upload: { variant: "default", label: "رفع" },
     };
-
     const config = variants[type ?? ""];
     if (!config) return <Badge variant="secondary">غير معروف</Badge>;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  // ===================== الفلترة =====================
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (log.target?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchesFilter = filterType === "all" || log.type === filterType;
-    return matchesSearch && matchesFilter;
-  });
+  // ===================== الفلترة (الآن تعمل على بيانات useQuery مباشرة) =====================
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const matchesSearch =
+        log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (log.target?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      const matchesFilter = filterType === "all" || log.type === filterType;
+      return matchesSearch && matchesFilter;
+    });
+  }, [logs, searchQuery, filterType]);
 
   // ===================== التحديد =====================
   const handleSelectAll = (checked: boolean) => {
@@ -211,38 +231,7 @@ const ActivityLogs = () => {
     filteredLogs.length > 0 &&
     filteredLogs.every((log) => selectedIds.includes(log.id));
 
-  // ===================== حذف =====================
-  const handleDeleteSingle = async (id: number) => {
-    try {
-      await deleteActivityLog(id);
-      setLogs((prev) => prev.filter((log) => log.id !== id));
-      setSelectedIds((prev) => prev.filter((i) => i !== id));
-      toast({ title: "تم الحذف", description: "تم حذف السجل بنجاح" });
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "فشل حذف السجل",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteSelected = async () => {
-    try {
-      await deleteMultipleActivityLogs(selectedIds);
-      setLogs((prev) => prev.filter((log) => !selectedIds.includes(log.id)));
-      const count = selectedIds.length;
-      setSelectedIds([]);
-      toast({ title: "تم الحذف", description: `تم حذف ${count} سجل بنجاح` });
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "فشل حذف السجلات",
-        variant: "destructive",
-      });
-    }
-  };
-
+  // ===================== عرض حالات التحميل والخطأ =====================
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -273,14 +262,13 @@ const ActivityLogs = () => {
             متابعة جميع الأحداث والعمليات داخل النظام
           </p>
         </div>
-
         <div className="flex gap-2">
           {canDelete && selectedIds.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">
+                <Button variant="destructive" disabled={deleteMultipleMutation.isPending}>
                   <Trash2 className="ml-2 h-4 w-4" />
-                  حذف المحدد ({selectedIds.length})
+                  {deleteMultipleMutation.isPending ? "جاري الحذف..." : `حذف المحدد (${selectedIds.length})`}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent dir="rtl">
@@ -294,7 +282,7 @@ const ActivityLogs = () => {
                 <AlertDialogFooter className="flex-row-reverse gap-2">
                   <AlertDialogCancel>إلغاء</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={handleDeleteSelected}
+                    onClick={() => deleteMultipleMutation.mutate(selectedIds)}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     حذف
@@ -303,7 +291,6 @@ const ActivityLogs = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          {/* ✅ --- تم حذف زر التصدير من هنا --- ✅ */}
         </div>
       </div>
 
@@ -320,7 +307,6 @@ const ActivityLogs = () => {
                 className="pr-10"
               />
             </div>
-
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="ml-2 h-4 w-4" />
@@ -346,6 +332,7 @@ const ActivityLogs = () => {
                   <Checkbox
                     checked={isAllSelected}
                     onCheckedChange={handleSelectAll}
+                    disabled={!filteredLogs.length}
                   />
                 </TableHead>
                 <TableHead className="text-right">المستخدم</TableHead>
@@ -389,6 +376,7 @@ const ActivityLogs = () => {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            disabled={deleteSingleMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -406,7 +394,7 @@ const ActivityLogs = () => {
                           <AlertDialogFooter className="flex-row-reverse gap-2">
                             <AlertDialogCancel>إلغاء</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeleteSingle(log.id)}
+                              onClick={() => deleteSingleMutation.mutate(log.id)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               حذف
@@ -420,7 +408,6 @@ const ActivityLogs = () => {
               ))}
             </TableBody>
           </Table>
-
           {filteredLogs.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               لا توجد نتائج مطابقة للبحث
@@ -441,7 +428,6 @@ const ActivityLogs = () => {
             <div className="text-2xl font-bold">{logs.length}</div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -460,7 +446,6 @@ const ActivityLogs = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -473,7 +458,6 @@ const ActivityLogs = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -491,4 +475,4 @@ const ActivityLogs = () => {
   );
 };
 
-export default ActivityLogs;  
+export default ActivityLogs;

@@ -1,11 +1,11 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FolderOpen, 
-  CheckSquare, 
-  Calendar, 
-  FileText, 
-  BarChart3, 
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  FolderOpen,
+  CheckSquare,
+  Calendar,
+  FileText,
+  BarChart3,
   Users,
   MessageSquare,
   Menu,
@@ -15,20 +15,28 @@ import {
   User,
   Shield,
   Activity,
-  Bell
+  Bell,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationSidebar from "@/components/NotificationSidebar";
 import { getSettings } from "@/api/settings";
+import { cn } from "@/lib/utils";
 
 const Layout = () => {
+  const location = useLocation();
+  const isChatRoute = location.pathname.startsWith("/chat");
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // اسم الشركة واسم النظام مع القيم الافتراضية
-  const [companyName, setCompanyName] = useState<string>("إدارة العمل");
-  const [systemName, setSystemName] = useState<string>("مرحبا بك في نظام إدارة العمل عن بعد");
+  // ==========================
+  // ✅ إعدادات النظام
+  // ==========================
+  const [companyName, setCompanyName] = useState("إدارة العمل");
+  const [systemName, setSystemName] = useState(
+    "مرحبا بك في نظام إدارة العمل عن بعد"
+  );
 
   const navigation = [
     { name: "الصفحة الرئيسية", href: "/", icon: Home },
@@ -49,19 +57,18 @@ const Layout = () => {
   ];
 
   // ==========================
-  // ✅ جلب إعدادات النظام من API
+  // ✅ جلب إعدادات النظام
   // ==========================
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const data = await getSettings();
 
-        // تأكد أن القيم من النوع string
-        if (data.company_name && typeof data.company_name === "string") {
+        if (typeof data.company_name === "string") {
           setCompanyName(data.company_name);
         }
 
-        if (data.system_name && typeof data.system_name === "string") {
+        if (typeof data.system_name === "string") {
           setSystemName(`مرحبا بك في نظام ${data.system_name}`);
         }
       } catch (error) {
@@ -72,9 +79,28 @@ const Layout = () => {
     loadSettings();
   }, []);
 
+  // ==========================
+  // ✅ منع السكرول في صفحة الشات فقط
+  // ==========================
+  useEffect(() => {
+    if (!isChatRoute) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    window.scrollTo(0, 0);
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [isChatRoute]);
+
   return (
-    <div className="h-screen bg-background flex overflow-hidden" dir="rtl">
-      {/* Mobile sidebar backdrop */}
+    <div className="h-screen h-[100dvh] bg-background flex overflow-hidden" dir="rtl">
+      {/* Backdrop (Mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -83,12 +109,15 @@ const Layout = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 right-0 z-50 w-64 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col ${
-        sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-      }`}>
-        {/* Sidebar Header - Fixed */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
-          <h1 className="text-xl font-bold text-primary">
+      <aside
+        className={cn(
+          "fixed inset-y-0 right-0 z-50 w-64 bg-card shadow-lg transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col",
+          sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+        )}
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between h-16 px-6 border-b">
+          <h1 className="text-xl font-bold text-primary truncate">
             {companyName}
           </h1>
           <Button
@@ -100,38 +129,44 @@ const Layout = () => {
             <X className="h-6 w-6" />
           </Button>
         </div>
-        
-        {/* Sidebar Navigation - Scrollable */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+
+        {/* Navigation */}
+        <nav
+          className={cn(
+            "flex-1 p-4 space-y-2",
+            isChatRoute ? "overflow-hidden" : "overflow-y-auto"
+          )}
+        >
           {navigation.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
                 key={item.name}
                 to={item.href}
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                  }`
-                }
                 onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )
+                }
               >
                 <Icon className="ml-3 h-5 w-5 flex-shrink-0" />
-                {item.name}
+                <span className="truncate">{item.name}</span>
               </NavLink>
             );
           })}
         </nav>
-      </div>
+      </aside>
 
-      {/* Main content */}
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header - Fixed */}
-        <header className="bg-card shadow-sm border-b border-border h-16 flex-shrink-0">
+        {/* Header */}
+        <header className="h-16 bg-card border-b flex-shrink-0">
           <div className="flex items-center justify-between h-full px-6">
-            <div className="flex flex-col md:flex-row md:items-center md:gap-4">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="icon"
@@ -140,12 +175,12 @@ const Layout = () => {
               >
                 <Menu className="h-6 w-6" />
               </Button>
-              
-              <div className="text-sm text-muted-foreground">
+
+              <div className="text-sm text-muted-foreground hidden md:block truncate max-w-[600px]">
                 {systemName}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <NotificationSidebar />
               <ThemeToggle />
@@ -153,8 +188,13 @@ const Layout = () => {
           </div>
         </header>
 
-        {/* Page content - Scrollable */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        {/* Content */}
+        <main
+          className={cn(
+            "flex-1 min-h-0",
+            isChatRoute ? "overflow-hidden p-0" : "p-6 overflow-y-auto"
+          )}
+        >
           <Outlet />
         </main>
       </div>
