@@ -33,7 +33,8 @@ export const ChatSidebar = ({
     >
       {/* ===== Header ===== */}
       <div className="p-4 border-b border-border flex-none">
-        <div className="flex items-center justify-between mb-4 flex-row-reverse">
+        {/* ⬅ زر الإنشاء في اليسار | العنوان في اليمين */}
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-right">المحادثات</h2>
 
           <Button size="icon" variant="ghost" onClick={onNewConversation}>
@@ -70,7 +71,6 @@ export const ChatSidebar = ({
                 currentConversationId === conversation.id ? "bg-accent" : ""
               }`}
             >
-              {/* RTL layout */}
               <div className="flex items-start gap-3 min-w-0 flex-row-reverse">
                 <Avatar className="shrink-0">
                   <AvatarFallback>

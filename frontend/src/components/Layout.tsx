@@ -99,7 +99,10 @@ const Layout = () => {
   }, [isChatRoute]);
 
   return (
-    <div className="h-screen h-[100dvh] bg-background flex overflow-hidden" dir="rtl">
+    <div
+      className="h-screen h-[100dvh] bg-background flex overflow-hidden"
+      dir="rtl"
+    >
       {/* Backdrop (Mobile) */}
       {sidebarOpen && (
         <div
@@ -130,13 +133,8 @@ const Layout = () => {
           </Button>
         </div>
 
-        {/* Navigation */}
-        <nav
-          className={cn(
-            "flex-1 p-4 space-y-2",
-            isChatRoute ? "overflow-hidden" : "overflow-y-auto"
-          )}
-        >
+        {/* Navigation (⬅️ دائمًا Scrollable) */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const Icon = item.icon;
             return (
