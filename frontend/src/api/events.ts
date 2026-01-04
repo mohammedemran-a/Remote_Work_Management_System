@@ -1,14 +1,9 @@
-// src/api/events.ts
-
-// --- استيراد axiosInstance من ملف الإعدادات المركزي ---
-// هذا يفترض أن لديك ملف axios.ts أو axios.js كما في بقية المشروع
 import { api as axiosInstance } from "./axios";
+import axios, { AxiosError } from "axios";
 
-// --- واجهة (Interface) لتحديد شكل بيانات الحدث عند الإرسال ---
-// هذه هي البيانات التي نرسلها إلى Laravel لإنشاء حدث جديد
 export interface EventPayload {
   title: string;
-  date: string; // يجب أن يكون نصًا بتنسيق 'yyyy-MM-dd'
+  date: string;
   time?: string;
   duration?: string;
   type: string;
@@ -17,40 +12,58 @@ export interface EventPayload {
   description?: string;
 }
 
-/**
- * دالة لجلب كل الأحداث من الخادم
- * @returns {Promise} - وعد يحتوي على استجابة axios
- */
-export const getEvents = () => {
-  // إرسال طلب GET إلى '/events' (سيتم دمج العنوان الأساسي من إعدادات axios)
-  return axiosInstance.get("/events");
+// --- دالة لجلب كل الأحداث ---
+export const getEvents = async () => {
+  try {
+    const response = await axiosInstance.get("/events");
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error("Error fetching events:", error.response?.data || error.message);
+      throw error.response?.data || error.message;
+    }
+    throw error;
+  }
 };
 
-/**
- * دالة لإنشاء حدث جديد في الخادم
- * @param {EventPayload} data - كائن يحتوي على بيانات الحدث الجديد
- * @returns {Promise} - وعد يحتوي على استجابة axios
- */
-export const createEvent = (data: EventPayload) => {
-  // إرسال طلب POST إلى '/events' مع بيانات الحدث
-  return axiosInstance.post("/events", data);
+// --- دالة لإنشاء حدث جديد ---
+export const createEvent = async (data: EventPayload) => {
+  try {
+    const response = await axiosInstance.post("/events", data);
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error("Error creating event:", error.response?.data || error.message);
+      throw error.response?.data || error.message;
+    }
+    throw error;
+  }
 };
 
-/**
- * دالة لتحديث حدث موجود في الخادم (للمستقبل)
- * @param {number} id - معرّف الحدث
- * @param {Partial<EventPayload>} data - كائن يحتوي على البيانات المراد تحديثها
- * @returns {Promise} - وعد يحتوي على استجابة axios
- */
-export const updateEvent = (id: number, data: Partial<EventPayload>) => {
-  return axiosInstance.put(`/events/${id}`, data);
+// --- دالة لتحديث حدث موجود ---
+export const updateEvent = async (id: number, data: Partial<EventPayload>) => {
+  try {
+    const response = await axiosInstance.put(`/events/${id}`, data);
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error(`Error updating event ${id}:`, error.response?.data || error.message);
+      throw error.response?.data || error.message;
+    }
+    throw error;
+  }
 };
 
-/**
- * دالة لحذف حدث من الخادم (للمستقبل)
- * @param {number} id - معرّف الحدث
- * @returns {Promise} - وعد يحتوي على استجابة axios
- */
-export const deleteEvent = (id: number) => {
-  return axiosInstance.delete(`/events/${id}`);
+// --- دالة لحذف حدث ---
+export const deleteEvent = async (id: number) => {
+  try {
+    const response = await axiosInstance.delete(`/events/${id}`);
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error(`Error deleting event ${id}:`, error.response?.data || error.message);
+      throw error.response?.data || error.message;
+    }
+    throw error;
+  }
 };

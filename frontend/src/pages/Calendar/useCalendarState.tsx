@@ -1,18 +1,20 @@
 // src/pages/Calendar/useCalendarState.ts
 
-// --- استيراد المكتبات اللازمة ---
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import {
+  getEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  EventPayload
+} from "@/api/events";
 
-// --- استيراد دوال الـ API الجديدة ---
-import { getEvents, createEvent, EventPayload } from "@/api/events";
-
-// --- واجهة (Interface) لتحديد شكل بيانات الحدث ---
 export interface Event {
   id: number;
   title: string;
-  date: string;
+  date: string;      // yyyy-MM-dd
   time: string;
   duration: string;
   type: string;
@@ -21,7 +23,6 @@ export interface Event {
   description: string;
 }
 
-// --- الـ Hook الرئيسي الذي يحتوي على كل منطق الحالة ---
 export const useCalendarState = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -31,26 +32,50 @@ export const useCalendarState = () => {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    title: "", date: new Date(), time: "", duration: "", type: "meeting", location: "", attendees: "", description: ""
+    title: "",
+    date: new Date(),
+    time: "",
+    duration: "",
+    type: "meeting",
+    location: "",
+    attendees: "",
+    description: ""
   });
 
-  // --- دالة لجلب البيانات ---
+  // --------------------
+  // جلب الأحداث من الخادم
+  // --------------------
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const response = await getEvents();
-        setEvents(response.data);
+        setEvents(Array.isArray(response) ? response : []);
       } catch (error) {
         console.error("خطأ في جلب البيانات:", error);
-        toast({ title: "خطأ", description: "فشل في جلب الأحداث من الخادم", variant: "destructive" });
+        toast({
+          title: "خطأ",
+          description: "فشل في جلب الأحداث من الخادم",
+          variant: "destructive"
+        });
       }
     };
     fetchEvents();
   }, [toast]);
 
-  // --- دوال مساعدة ---
+  // --------------------
+  // إعادة تعيين النموذج
+  // --------------------
   const resetForm = () => {
-    setFormData({ title: "", date: new Date(), time: "", duration: "", type: "meeting", location: "", attendees: "", description: "" });
+    setFormData({
+      title: "",
+      date: new Date(),
+      time: "",
+      duration: "",
+      type: "meeting",
+      location: "",
+      attendees: "",
+      description: ""
+    });
     setEditingEvent(null);
   };
 
@@ -74,55 +99,112 @@ export const useCalendarState = () => {
     setIsDialogOpen(true);
   };
 
-  // --- دالة لإرسال بيانات النموذج ---
+  // --------------------
+  // حفظ/إنشاء أو تعديل حدث
+  // --------------------
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      toast({ title: "خطأ", description: "يرجى إدخال عنوان الحدث", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال عنوان الحدث",
+        variant: "destructive"
+      });
       return;
     }
 
+    const fixedDate = new Date(formData.date);
+    fixedDate.setHours(12, 0, 0, 0);
+
     const eventPayload: EventPayload = {
       title: formData.title,
-      date: format(formData.date, "yyyy-MM-dd"),
+      date: format(fixedDate, "yyyy-MM-dd"),
       time: formData.time,
       duration: formData.duration,
       type: formData.type,
       location: formData.location,
-      attendees: formData.attendees.split(",").map(a => a.trim()).filter(a => a),
+      attendees: formData.attendees
+        .split(",")
+        .map(a => a.trim())
+        .filter(a => a),
       description: formData.description
     };
 
-    if (editingEvent) {
-      toast({ title: "ملاحظة", description: "التعديل غير مدعوم حاليًا" });
-      return;
-    } 
-    
     try {
-      const response = await createEvent(eventPayload);
-      setEvents(prevEvents => [...prevEvents, response.data]);
-      toast({ title: "تم الإضافة", description: "تم إضافة الحدث بنجاح" });
+      if (editingEvent) {
+        // --------------------
+        // تعديل الحدث
+        // --------------------
+        const response = await updateEvent(editingEvent.id, eventPayload);
+        setEvents(prev =>
+          prev.map(ev => (ev.id === editingEvent.id ? response : ev))
+        );
+        toast({ title: "تم التعديل", description: "تم تعديل الحدث بنجاح" });
+      } else {
+        // --------------------
+        // إنشاء حدث جديد
+        // --------------------
+        const response = await createEvent(eventPayload);
+        setEvents(prev => [...prev, response]);
+        toast({ title: "تم الإضافة", description: "تم إضافة الحدث بنجاح" });
+      }
+
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
       console.error("خطأ في حفظ البيانات:", error);
-      toast({ title: "خطأ", description: "فشل في حفظ الحدث في الخادم", variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: "فشل في حفظ الحدث في الخادم",
+        variant: "destructive"
+      });
     }
   };
 
-  // --- دالة الحذف ---
-  const handleDelete = (eventId: number) => {
-    toast({ title: "ملاحظة", description: "الحذف غير مدعوم حاليًا" });
+  // --------------------
+  // حذف حدث
+  // --------------------
+  const handleDelete = async (eventId: number) => {
+    try {
+      await deleteEvent(eventId);
+      setEvents(prev => prev.filter(ev => ev.id !== eventId));
+      toast({ title: "تم الحذف", description: "تم حذف الحدث بنجاح" });
+    } catch (error) {
+      console.error("خطأ في الحذف:", error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف الحدث",
+        variant: "destructive"
+      });
+    }
   };
 
-  // --- دالة فلترة الأحداث حسب التاريخ ---
+  // --------------------
+  // فلترة الأحداث حسب التاريخ
+  // --------------------
   const getEventsForDate = (date: Date): Event[] => {
-    const dateString = format(date, "yyyy-MM-dd");
+    if (!Array.isArray(events)) return [];
+    const fixed = new Date(date);
+    fixed.setHours(12, 0, 0, 0);
+    const dateString = format(fixed, "yyyy-MM-dd");
     return events.filter(event => event.date === dateString);
   };
 
-  // --- إرجاع كل الحالات والدوال ---
   return {
-    events, selectedDate, setSelectedDate, currentMonth, setCurrentMonth, isDialogOpen, setIsDialogOpen,
-    editingEvent, formData, setFormData, resetForm, openAddDialog, openEditDialog, handleSubmit, handleDelete, getEventsForDate
+    events,
+    selectedDate,
+    setSelectedDate,
+    currentMonth,
+    setCurrentMonth,
+    isDialogOpen,
+    setIsDialogOpen,
+    editingEvent,
+    formData,
+    setFormData,
+    resetForm,
+    openAddDialog,
+    openEditDialog,
+    handleSubmit,
+    handleDelete,
+    getEventsForDate
   };
 };
