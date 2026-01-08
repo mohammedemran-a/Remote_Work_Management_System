@@ -1,118 +1,104 @@
-// src/pages/Reports/useReportsState.ts
-
+// src/pages/Reports/useReportsState.tsx
 import { useState, useEffect, useMemo } from "react";
-import { DateRange } from "react-day-picker";
-
-// 🟢 التعديل: استيراد الدوال والواجهات الجديدة
 import { getTasks, TaskResponse } from "@/api/task";
-import { getTeams, Team } from "@/api/team"; // تم تغيير getTeamMembers إلى getTeams
+import { getProjects, Project } from "@/api/project";
 
-/* ================= TYPES ================= */
-
+// تعريف الواجهات البرمجية (Interfaces) لضمان دقة البيانات
 export interface ReportStats {
   totalTasks: number;
   completedTasks: number;
   inProgressTasks: number;
+  tasksOverdue: number;
   completionRate: number;
+  activeProjects: number;
 }
 
-export interface ChartData {
+export interface ProjectProgressData {
+  id: number;
   name: string;
-  value: number;
+  completion: number;
+  status: string;
 }
-
-// التعديل: التقارير الآن تعتمد على أداء "الفريق"
-export interface TeamPerformance extends Team {
-  tasksAssigned: number;
-  tasksCompleted: number;
-  efficiency: number;
-}
-
-/* ================= HOOK ================= */
 
 export const useReportsState = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]); // تغيير الاسم ليكون واضحاً
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const [tasksData, teamsData] = await Promise.all([
+        // جلب البيانات من الـ API بشكل متوازي لسرعة الأداء
+        const [tasksData, projectsData] = await Promise.all([
           getTasks(),
-          getTeams(), // الدالة الجديدة
+          getProjects()
         ]);
         
-        setTasks(tasksData || []); 
-        setTeams(teamsData || []);
-
+        // جلب المهام (دعم مصفوفة مباشرة أو كائن يحتوي على data)
+        setTasks(tasksData || []);
+        
+        // جلب المشاريع (getProjects التي أرسلتها تتعامل داخلياً مع التنسيقات)
+        setProjects(projectsData || []);
       } catch (error) {
-        console.error("Failed to fetch report data:", error);
-        setTasks([]);
-        setTeams([]);
+        console.error("خطأ أثناء جلب بيانات التقارير:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
-  const processedData = useMemo(() => {
-    const safeTasks = Array.isArray(tasks) ? tasks : [];
-    const safeTeams = Array.isArray(teams) ? teams : [];
+  const data = useMemo(() => {
+    // 1. حساب الإحصائيات العامة للمهام
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === "مكتملة").length;
+    const inProgressTasks = tasks.filter(t => t.status === "قيد التنفيذ").length;
+    const overdueTasksList = tasks.filter(t => t.status === "متأخرة");
 
-    // فلطرة المهام حسب التاريخ
-    const filteredTasks = dateRange?.from && dateRange?.to
-      ? safeTasks.filter(task => {
-          const taskDate = new Date(task.created_at);
-          return taskDate >= dateRange.from! && taskDate <= dateRange.to!;
-        })
-      : safeTasks;
+    const stats: ReportStats = {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      tasksOverdue: overdueTasksList.length,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      activeProjects: projects.length
+    };
 
-    // حساب الإحصائيات العامة
-    const totalTasks = filteredTasks.length;
-    const completedTasks = filteredTasks.filter(t => t.status === 'مكتملة').length;
-    const inProgressTasks = filteredTasks.filter(t => t.status === 'قيد التنفيذ').length;
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    const stats: ReportStats = { totalTasks, completedTasks, inProgressTasks, completionRate };
-
-    // بيانات الرسوم البيانية
-    const tasksByStatus: ChartData[] = [
-      { name: 'مكتملة', value: completedTasks },
-      { name: 'قيد التنفيذ', value: inProgressTasks },
-      { name: 'متأخرة', value: filteredTasks.filter(t => t.status === 'متأخرة').length },
-      { name: 'جديدة', value: filteredTasks.filter(t => t.status === 'جديدة').length },
-    ];
-
-    // حساب أداء كل فريق (Team Performance)
-    const teamPerformance: TeamPerformance[] = safeTeams.map(team => {
-      // الحصول على جميع معرفات الأعضاء في هذا الفريق
-      const memberIds = team.members?.map(m => m.id) || [];
+    // 2. ربط المهام بالمشاريع (Logic Join)
+    const projectProgress: ProjectProgressData[] = projects.map(project => {
+      // البحث عن المهام التي تنتمي لهذا المشروع حصراً
+      const projectTasks = tasks.filter(t => Number(t.project_id) === Number(project.id));
       
-      // فلطرة المهام التي تخص أعضاء هذا الفريق
-      const teamTasks = filteredTasks.filter(task => memberIds.includes(task.assigned_to));
-      const teamTasksCompleted = teamTasks.filter(t => t.status === 'مكتملة').length;
-      const efficiency = teamTasks.length > 0 ? Math.round((teamTasksCompleted / teamTasks.length) * 100) : 0;
-      
+      const doneCount = projectTasks.filter(t => t.status === "مكتملة").length;
+      const totalCount = projectTasks.length;
+
+      // حساب النسبة المئوية للمشروع
+      const ratio = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
       return {
-        ...team,
-        tasksAssigned: teamTasks.length,
-        tasksCompleted: teamTasksCompleted,
-        efficiency: efficiency,
+        id: project.id,
+        name: project.name,
+        completion: ratio,
+        status: project.status || "نشط"
       };
     });
 
-    return { stats, teamPerformance, tasksByStatus };
+    // 3. تنسيق بيانات الرسم الدائري (Pie Chart)
+    const taskStatusData = [
+      { name: "مكتملة", value: completedTasks, color: "hsl(142, 76%, 36%)" },
+      { name: "قيد التنفيذ", value: inProgressTasks, color: "hsl(217, 91%, 60%)" },
+      { name: "متأخرة", value: overdueTasksList.length, color: "hsl(0, 84%, 60%)" }
+    ];
 
-  }, [tasks, teams, dateRange]);
+    return { 
+      stats, 
+      projectProgress, 
+      taskStatusData, 
+      tasks, // نمرر المهام الخام لاستخدامها في تصدير التقارير
+      projects // نمرر المشاريع الخام لاستخدامها في البحث
+    };
+  }, [tasks, projects]);
 
-  return {
-    loading,
-    dateRange,
-    setDateRange,
-    ...processedData,
-  };
+  return { loading, ...data };
 };
