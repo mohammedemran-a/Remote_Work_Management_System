@@ -156,7 +156,7 @@ const Auth = () => {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       className="pr-10 text-right placeholder:text-right"
-                      placeholder="example@email.com"
+                      placeholder="ادخل البريد الإلكتروني"
                     />
                   </div>
                 </div>
@@ -170,7 +170,7 @@ const Auth = () => {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className="pr-10 pl-10 text-right"
-                      placeholder="••••••••"
+                      placeholder="ادخل كلمة المرور"
                     />
                     <button
                       type="button"
@@ -211,7 +211,7 @@ const Auth = () => {
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
                       className="pr-10 text-right"
-                      placeholder="أحمد محمد"
+                      placeholder="ادخل الاسم الكامل"
                     />
                   </div>
                 </div>
@@ -226,7 +226,7 @@ const Auth = () => {
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
                       className="pr-10 text-right"
-                      placeholder="example@email.com"
+                      placeholder="ادخل البريد الإلكتروني"
                     />
                   </div>
                 </div>
@@ -240,7 +240,7 @@ const Auth = () => {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       className="pr-10 pl-10 text-right"
-                      placeholder="8 أحرف على الأقل"
+                      placeholder="ادخل كلمة المرور"
                     />
                     <button
                       type="button"
