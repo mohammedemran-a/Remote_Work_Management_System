@@ -1,12 +1,16 @@
+// src/pages/ProjectDetails.tsx
+import { cn } from "@/lib/utils";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getProject } from "@/api/project";
+import { useMemo } from "react";
+import { getProject } from "@/api/project"; // تأكد من أن هذه الدالة موجودة وتعمل
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton"; // لاستخدامها في حالة التحميل
 
 import {
   ArrowRight,
@@ -17,8 +21,11 @@ import {
   User,
   FileText,
   TrendingUp,
+  AlertTriangle,
+  Package,
 } from "lucide-react";
 
+// 1. واجهة للبيانات القادمة من الـ API (قد تكون غير مكتملة)
 interface ProjectDetailsAPI {
   id: number;
   name: string;
@@ -30,223 +37,216 @@ interface ProjectDetailsAPI {
     id: number;
     name: string;
   };
+  // هذه هي البيانات التي يجب أن يرسلها الـ Backend الآن
   tasks_count?: number | null;
-  completed_tasks_count?: number | null;
-  team_members?: number | null;
+  completedTasks?: number | null; // تطابق الاسم المستخدم في controller
+  users_count?: number | null;    // تطابق الاسم المستخدم في controller
+  // يمكن إضافة تفاصيل المهام والفريق هنا لاحقًا
+  // tasks?: Task[];
+  // team?: User[];
+}
+
+// 2. واجهة للبيانات بعد معالجتها وجاهزيتها للعرض
+interface ProjectViewData {
+  id: number;
+  name: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  managerName: string;
+  totalTasks: number;
+  completedTasks: number;
+  remainingTasks: number;
+  teamCount: number;
+  progress: number;
+  remainingDays: number;
 }
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
+  // 3. جلب البيانات بشكل آمن
+  const { data: apiData, isLoading, isError } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
-      const res = await getProject(Number(id));
-      return res.data as ProjectDetailsAPI;
+      // نفترض أن getProject تعيد { data: ... }
+      const response = await getProject(Number(id));
+      return response.data as ProjectDetailsAPI;
     },
-    enabled: !!id,
+    enabled: !!id, // لا تقم بتشغيل الكويري إلا إذا كان هناك ID
   });
 
+  // 4. معالجة البيانات بأمان باستخدام useMemo
+  const data = useMemo((): ProjectViewData | null => {
+    if (!apiData) return null;
+
+    const totalTasks = Number(apiData.tasks_count) || 0;
+    const completedTasks = Number(apiData.completedTasks) || 0;
+    const teamCount = Number(apiData.users_count) || 0;
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const remainingDays = apiData.end_date
+      ? Math.max(Math.ceil((new Date(apiData.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)), 0)
+      : 0;
+
+    return {
+      id: apiData.id,
+      name: apiData.name,
+      description: apiData.description,
+      status: progress === 100 ? "مكتمل" : apiData.status,
+      startDate: apiData.start_date,
+      endDate: apiData.end_date,
+      managerName: apiData.manager?.name || "غير محدد",
+      totalTasks,
+      completedTasks,
+      remainingTasks: totalTasks - completedTasks,
+      teamCount,
+      progress,
+      remainingDays,
+    };
+  }, [apiData]);
+
+  // 5. عرض حالات التحميل والخطأ بشكل واضح
   if (isLoading) {
-    return <p className="text-center py-12">جارٍ تحميل تفاصيل المشروع...</p>;
+    return <ProjectDetailsSkeleton />;
   }
 
   if (isError || !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]" dir="rtl">
-        <h2 className="text-2xl font-bold mb-4">المشروع غير موجود</h2>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center" dir="rtl">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-bold mb-2">حدث خطأ</h2>
+        <p className="text-muted-foreground mb-6">لم نتمكن من العثور على تفاصيل المشروع. قد يكون محذوفًا أو أن الرابط غير صحيح.</p>
         <Button onClick={() => navigate("/projects")}>
           <ArrowRight className="ml-2 h-4 w-4" />
-          العودة للمشاريع
+          العودة إلى قائمة المشاريع
         </Button>
       </div>
     );
   }
 
-  /* =======================
-     🔒 معالجة آمنة للأرقام
-     ======================= */
-
-  const totalTasks = Number.isFinite(data.tasks_count)
-    ? Number(data.tasks_count)
-    : 0;
-
-  const completedTasks = Number.isFinite(data.completed_tasks_count)
-    ? Number(data.completed_tasks_count)
-    : 0;
-
-  const remainingTasks =
-    totalTasks > completedTasks ? totalTasks - completedTasks : 0;
-
-  const progress =
-    totalTasks > 0
-      ? Math.round((completedTasks / totalTasks) * 100)
-      : 0;
-
-  const teamMembers = Number.isFinite(data.team_members)
-    ? Number(data.team_members)
-    : 0;
-
-  const remainingDays = data.end_date
-    ? Math.max(
-        Math.ceil(
-          (new Date(data.end_date).getTime() - new Date().getTime()) /
-            (1000 * 60 * 60 * 24)
-        ),
-        0
-      )
-    : 0;
-
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
     switch (status) {
-      case "نشط":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "مكتمل":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "مؤجل":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "مؤرشف":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "نشط": return "bg-green-100 text-green-800";
+      case "مكتمل": return "bg-blue-100 text-blue-800";
+      case "مؤجل": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* Header */}
+    <div className="space-y-6 p-4 md:p-6" dir="rtl">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate("/projects")} className="gap-2">
+        <Button variant="outline" onClick={() => navigate("/projects")} className="gap-2">
           <ArrowRight className="h-4 w-4" />
           العودة للمشاريع
         </Button>
+        {/* يمكن إضافة أزرار إجراءات هنا (تعديل، حذف، ...) */}
       </div>
 
-      {/* Title */}
       <div className="space-y-2">
         <div className="flex items-center gap-3">
+          <Package className="h-8 w-8 text-primary" />
           <h1 className="text-4xl font-bold">{data.name}</h1>
-          <Badge className={getStatusColor(data.status)}>{data.status}</Badge>
+          <Badge className={cn("text-base", getStatusClass(data.status))}>{data.status}</Badge>
         </div>
-        <p className="text-lg text-muted-foreground">{data.description}</p>
+        <p className="text-lg text-muted-foreground max-w-4xl">{data.description}</p>
       </div>
 
-      {/* Progress */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            التقدم العام
-          </CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp /> التقدم العام</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>نسبة الإنجاز</span>
-              <span className="text-2xl font-bold">{progress}%</span>
-            </div>
-            <Progress value={progress} className="h-3" />
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-medium">نسبة الإنجاز</span>
+            <span className="text-3xl font-bold text-primary">{data.progress}%</span>
           </div>
-
+          <Progress value={data.progress} className="h-3" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">المهام المكتملة</p>
-                <p className="text-2xl font-bold">{completedTasks}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-              <Clock className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">المهام المتبقية</p>
-                <p className="text-2xl font-bold">{remainingTasks}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-              <FileText className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">إجمالي المهام</p>
-                <p className="text-2xl font-bold">{totalTasks}</p>
-              </div>
-            </div>
+            <StatCard icon={CheckCircle2} label="المهام المكتملة" value={data.completedTasks} color="text-green-600" />
+            <StatCard icon={Clock} label="المهام المتبقية" value={data.remainingTasks} color="text-blue-600" />
+            <StatCard icon={FileText} label="إجمالي المهام" value={data.totalTasks} color="text-purple-600" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>معلومات المشروع</CardTitle>
-          </CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle>تفاصيل المشروع</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <User className="h-4 w-4" /> المشرف
-              </span>
-              <span>{data.manager?.name || "-"}</span>
-            </div>
+            <InfoRow icon={User} label="مدير المشروع" value={data.managerName} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4" /> أعضاء الفريق
-              </span>
-              <span>{teamMembers} عضو</span>
-            </div>
+            <InfoRow icon={Users} label="أعضاء الفريق" value={`${data.teamCount} عضو`} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" /> تاريخ البدء
-              </span>
-              <span>{data.start_date}</span>
-            </div>
+            <InfoRow icon={Calendar} label="تاريخ البدء" value={data.startDate} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" /> تاريخ الانتهاء
-              </span>
-              <span>{data.end_date}</span>
-            </div>
+            <InfoRow icon={Calendar} label="تاريخ التسليم" value={data.endDate} />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>الإحصائيات</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>إحصائيات سريعة</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">معدل الإنجاز</span>
-              <span>{progress}%</span>
-            </div>
+            <InfoRow icon={TrendingUp} label="معدل الإنجاز" value={`${data.progress}%`} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">عدد الأيام المتبقية</span>
-              <span>{remainingDays}</span>
-            </div>
+            <InfoRow icon={Clock} label="الأيام المتبقية" value={`${data.remainingDays} يوم`} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">المهام لكل عضو</span>
-              <span>
-                {teamMembers > 0
-                  ? (totalTasks / teamMembers).toFixed(1)
-                  : 0}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">الحالة</span>
-              <Badge className={getStatusColor(data.status)}>{data.status}</Badge>
-            </div>
+            <InfoRow
+              icon={Users}
+              label="معدل المهام لكل عضو"
+              value={data.teamCount > 0 ? (data.totalTasks / data.teamCount).toFixed(1) : "0"}
+            />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 };
+
+// 6. مكونات مساعدة للحفاظ على نظافة الكود
+const StatCard = ({ icon: Icon, label, value, color }: { icon: React.ElementType, label: string, value: number | string, color: string }) => (
+  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+    <Icon className={`h-8 w-8 ${color}`} />
+    <div>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
+    </div>
+  </div>
+);
+
+const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | number }) => (
+  <div className="flex justify-between items-center">
+    <span className="flex items-center gap-2 text-muted-foreground">
+      <Icon className="h-4 w-4" /> {label}
+    </span>
+    <span className="font-semibold">{value}</span>
+  </div>
+);
+
+const ProjectDetailsSkeleton = () => (
+  <div className="space-y-6 p-4 md:p-6" dir="rtl">
+    <Skeleton className="h-10 w-48" />
+    <div className="space-y-2">
+      <Skeleton className="h-12 w-1/2" />
+      <Skeleton className="h-6 w-3/4" />
+    </div>
+    <Card>
+      <CardHeader><Skeleton className="h-8 w-40" /></CardHeader>
+      <CardContent className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Skeleton className="h-64 w-full lg:col-span-2" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  </div>
+);
 
 export default ProjectDetails;

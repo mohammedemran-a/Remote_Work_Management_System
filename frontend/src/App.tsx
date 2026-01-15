@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetails from "./pages/ProjectDetails";
 import Tasks from "./pages/Tasks";
+import TaskDetails from "./pages/TaskDetails"; // ✅ 1. قم باستيراد مكون تفاصيل المهمة
 import Calendar from "./pages/Calendar";
 
 import Files from "./pages/Files";
@@ -37,14 +38,12 @@ const App = () => {
   const loading = useAuthStore((state) => state.loading);
   const token = useAuthStore((state) => state.token);
 
-  // ✅ جلب بيانات المستخدم مرة واحدة عند تشغيل التطبيق
   useEffect(() => {
     if (token) {
       fetchUser();
     }
   }, [token, fetchUser]);
 
-  // ✅ انتظار تحميل المستخدم قبل عرض أي Routes
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen text-xl font-semibold">
@@ -79,7 +78,11 @@ const App = () => {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="projects/:id" element={<ProjectDetails />} />
+                
+                {/* --- قسم المهام --- */}
                 <Route path="tasks" element={<Tasks />} />
+                <Route path="tasks/:id" element={<TaskDetails />} /> {/* ✅ 2. أضف هذا المسار الجديد */}
+                
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="files" element={<Files />} />
                 <Route path="reports" element={<Reports />} />
@@ -104,4 +107,3 @@ const App = () => {
 };
 
 export default App;
-

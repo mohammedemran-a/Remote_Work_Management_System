@@ -15,7 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('status', ['جديدة', 'قيد التنفيذ', 'مكتملة', 'متأخرة'])->default('جديدة');
+            
+            // ✅✅✅====== الإصلاح هنا ======✅✅✅
+            // تم تغيير النوع إلى string ليكون أكثر مرونة
+            $table->string('status')->default('جديدة'); 
+            
+            // تم إزالة ->after('status') من هنا
+            $table->text('review_notes')->nullable(); 
+
             $table->enum('priority', ['عالية','متوسطة','منخفضة'])->default('متوسطة');
             $table->foreignId('assigned_to')->constrained('users')->cascadeOnDelete();
             $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();

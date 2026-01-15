@@ -5,31 +5,32 @@ import { AxiosError } from "axios";
 
 /* ================= TYPES ================= */
 
-// واجهة Role يمكن استخدامها في أي مكان
 export interface Role {
   id: number;
   name: string;
 }
 
-// 1. الواجهة الرئيسية للمستخدم (User Interface)
+// الواجهة الرئيسية للمستخدم (User Interface) - مع الإصلاح النهائي
 export interface User {
   id: number;
   name: string;
   email: string;
-  roles: Role[];
-  created_at: string;
-  updated_at: string;
+
+  // ✅✅✅====== الإصلاح النهائي والحاسم ======✅✅✅
+  // هذا التعريف يقبل كلاً من ['Admin'] و [{id: 1, name: 'Admin'}]
+  roles: (Role | string)[];
+
+  created_at?: string;
+  updated_at?: string;
 }
 
-// 2. واجهة الحمولة (Payload) التي يتم إرسالها إلى الـ API
 export interface UserPayload {
   name: string;
   email: string;
   password?: string;
-  roles: string[]; // أسماء الأدوار
+  roles: string[]; // عند الإرسال، نرسل دائمًا مصفوفة نصوص
 }
 
-// واجهة لرسائل الخطأ من الـ API
 interface ApiError {
   message: string;
   errors?: Record<string, string[]>;

@@ -7,39 +7,49 @@ interface TrendsProps {
   stats: ReportStats;
 }
 
+const TrendItem = ({ title, value, icon, bgColor, textColor }: any) => (
+  <div className={`p-4 rounded-lg ${bgColor}`}>
+    <div className="flex items-center gap-3">
+      <div className={`p-2 rounded-full bg-white/60 ${textColor}`}>{icon}</div>
+      <div>
+        <p className={`font-bold ${textColor}`}>{title}</p>
+        <p className={`text-sm font-medium ${textColor}/80`}>{value}</p>
+      </div>
+    </div>
+  </div>
+);
+
 export const Trends = ({ stats }: TrendsProps) => {
   return (
-    <Card>
+    <Card className="col-span-full border-none shadow-sm bg-white">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" /> الاتجاهات والتحليلات
+        <CardTitle className="flex items-center gap-2 text-lg font-bold">
+          <TrendingUp className="h-5 w-5 text-slate-400" /> الاتجاهات والتحليلات
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="flex items-start gap-4 p-4 bg-green-50 dark:bg-green-900/10 rounded-lg">
-            <TrendingUp className="h-8 w-8 text-green-600" />
-            <div>
-              <h4 className="font-semibold text-green-800 dark:text-green-400">إنتاجية ممتازة</h4>
-              <p className="text-sm text-green-600/80">تم إكمال {stats.completedTasks} مهمة بنجاح.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-4 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-            <Users className="h-8 w-8 text-blue-600" />
-            <div>
-              <h4 className="font-semibold text-blue-800 dark:text-blue-400">كفاءة التشغيل</h4>
-              <p className="text-sm text-blue-600/80">معدل الإنجاز العام {stats.completionRate}%</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
-            <AlertTriangle className="h-8 w-8 text-orange-600" />
-            <div>
-              <h4 className="font-semibold text-orange-800 dark:text-orange-400">مهام تحت التنفيذ</h4>
-              <p className="text-sm text-orange-600/80">لديك {stats.inProgressTasks} مهمة نشطة حالياً.</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TrendItem
+            title="إنتاجية متزايدة"
+            value={`زيادة ${stats.completedTasks} في إكمال المهام هذا الشهر`}
+            icon={<TrendingUp />}
+            bgColor="bg-emerald-50"
+            textColor="text-emerald-700"
+          />
+          <TrendItem
+            title="كفاءة الفريق"
+            value={`متوسط كفاءة الفريق ${stats.completionRate}% هذا الشهر`}
+            icon={<Users />}
+            bgColor="bg-blue-50"
+            textColor="text-blue-700"
+          />
+          <TrendItem
+            title="نقاط التحسين"
+            value={`${stats.tasksOverdue} مهام متأخرة تحتاج لمتابعة`}
+            icon={<AlertTriangle />}
+            bgColor="bg-amber-50"
+            textColor="text-amber-700"
+          />
         </div>
       </CardContent>
     </Card>
