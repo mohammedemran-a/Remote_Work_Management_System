@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   Check,
@@ -36,6 +36,7 @@ import {
 } from "@/api/notifications";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // --------------------------------
 // Types
@@ -60,17 +61,38 @@ interface Notification {
 const Notifications = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuthStore();
+
+  // صلاحيات الصفحة
+  const canView = hasPermission("notifications_view");
+  const canDelete = hasPermission("notifications_delete");
 
   // 🔴 Dialog states
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // --------------------------------
-  // React Query: fetch notifications
+  // Fetch notifications
   // --------------------------------
-  const { data: notifications = [], isLoading, isError } = useQuery({
+  const fetchNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await queryClient.fetchQuery({
+        queryKey: ["notifications"],
+        queryFn: getAllNotifications,
+      });
+    } catch (err) {
+      // error handled in React Query's isError
+    } finally {
+      setIsLoading(false);
+    }
+  }, [queryClient]);
+
+  const { data: notifications = [], isError } = useQuery({
     queryKey: ["notifications"],
     queryFn: getAllNotifications,
+    enabled: canView, // ✅ لن يجلب البيانات إذا لم يكن لدى المستخدم صلاحية
     retry: false,
   });
 
@@ -79,22 +101,26 @@ const Notifications = () => {
   // --------------------------------
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationAsRead(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const markAllAsReadMutation = useMutation({
     mutationFn: markAllNotificationsAsRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNotification(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const deleteAllMutation = useMutation({
     mutationFn: deleteAllNotifications,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   // --------------------------------
@@ -102,8 +128,7 @@ const Notifications = () => {
   // --------------------------------
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleString("ar-EG");
+  const formatDate = (date: string) => new Date(date).toLocaleString("ar-EG");
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -136,8 +161,18 @@ const Notifications = () => {
   };
 
   // --------------------------------
-  // Loading & Error
+  // عدم السماح بالعرض إذا لم توجد صلاحية
   // --------------------------------
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          ليس لديك صلاحية لعرض صفحة الإشعارات
+        </p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4 p-6">
@@ -182,7 +217,7 @@ const Notifications = () => {
             </Button>
           )}
 
-          {notifications.length > 0 && (
+          {notifications.length > 0 && canDelete && (
             <Button
               variant="destructive"
               onClick={() => setDeleteAllOpen(true)}
@@ -243,14 +278,16 @@ const Notifications = () => {
                     </Button>
                   )}
 
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="حذف"
-                    onClick={() => setDeleteId(n.id)}
-                  >
-                    <X className="h-4 w-4 text-red-600" />
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="حذف"
+                      onClick={() => setDeleteId(n.id)}
+                    >
+                      <X className="h-4 w-4 text-red-600" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );

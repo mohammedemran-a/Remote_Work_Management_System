@@ -71,6 +71,7 @@ const RolesPermissions = () => {
     if (perm.startsWith("notifications")) return "الإشعارات";
     if (perm.startsWith("projects")) return "المشاريع";
     if (perm.startsWith("tasks")) return "المهام";
+    if (perm.startsWith("calendar")) return "التقويم";
     if (perm.startsWith("activities")) return "الأنشطة";
     if (perm.startsWith("team")) return "الفريق";
     if (perm.startsWith("files")) return "الملفات";
@@ -109,20 +110,32 @@ const RolesPermissions = () => {
       toast({ title: "خطأ", description: message });
     }
   }, [toast]);
-
   useEffect(() => {
-    if (!canView) return;
+    // 🔒 إذا لم توجد صلاحية عرض
+    if (!canView) {
+      setIsLoading(false); // تأكد أن التحميل متوقف
+      return;
+    }
+
+    let isMounted = true;
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
         await Promise.all([fetchRoles(), fetchPermissions()]);
       } finally {
-        setIsLoading(false); // بعد انتهاء التحميل
+        if (isMounted) {
+          setIsLoading(false); // بعد انتهاء التحميل
+        }
       }
     };
 
     fetchData();
+
+    // 🧹 تنظيف عند الخروج من الصفحة
+    return () => {
+      isMounted = false;
+    };
   }, [canView, fetchRoles, fetchPermissions]);
 
   const handleDeleteRole = async (roleId: number) => {
@@ -200,7 +213,7 @@ const RolesPermissions = () => {
 
   const togglePermission = (perm: string) => {
     setNewRolePermissions((prev) =>
-      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm],
     );
   };
 
@@ -211,6 +224,7 @@ const RolesPermissions = () => {
     "الإشعارات",
     "المشاريع",
     "المهام",
+    "التقويم",
     "الفريق",
     "الملفات",
     "التقارير",
@@ -218,21 +232,21 @@ const RolesPermissions = () => {
     "الإعدادات",
   ];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-lg text-muted-foreground">
-          جاري تحميل الأدوار والصلاحيات...
-        </p>
-      </div>
-    );
-  }
-
   if (!canView) {
     return (
       <div className="flex items-center justify-center h-screen">
         <p className="text-lg text-muted-foreground">
           ليس لديك صلاحية لعرض صفحة الأدوار والصلاحيات
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          جاري تحميل الأدوار والصلاحيات...
         </p>
       </div>
     );
@@ -304,7 +318,7 @@ const RolesPermissions = () => {
                                 <Checkbox
                                   id={permission.name}
                                   checked={newRolePermissions.includes(
-                                    permission.name
+                                    permission.name,
                                   )}
                                   onCheckedChange={() =>
                                     togglePermission(permission.name)
@@ -458,4 +472,4 @@ const RolesPermissions = () => {
   );
 };
 
-export default RolesPermissions;  
+export default RolesPermissions;

@@ -11,12 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Mail, Lock, Upload, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -50,23 +45,24 @@ const Profile = () => {
     email: "",
     job_title: "",
   });
-
   const [passwordData, setPasswordData] = useState<PasswordData>({
     current_password: "",
     new_password: "",
     confirm_password: "",
   });
+  const [isLoading, setIsLoading] = useState<boolean>(true); // ✅ حالة التحميل
 
   // جلب بيانات المستخدم عند التحميل
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        setIsLoading(true); // بدء التحميل
         const data = await getMyProfile();
 
         setProfileData({
           name: data.user.name,
           email: data.user.email,
-          job_title: data.profile.job_title,
+          job_title: data.role || data.profile.job_title || "",
           joined_at: data.profile.joined_at,
           status: data.profile.status,
           avatar: data.profile.avatar_url,
@@ -78,6 +74,8 @@ const Profile = () => {
           title: "خطأ",
           description: "حدث خطأ أثناء جلب بيانات الملف الشخصي",
         });
+      } finally {
+        setIsLoading(false); // انتهاء التحميل
       }
     };
 
@@ -171,6 +169,17 @@ const Profile = () => {
       });
     }
   };
+
+  // ✅ شاشة التحميل
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">
+          جاري تحميل بيانات الملف الشخصي...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" dir="rtl">

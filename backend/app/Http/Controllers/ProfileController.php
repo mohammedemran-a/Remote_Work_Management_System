@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class ProfileController extends Controller
 {
     /**
-     * 🔹 جلب بيانات المستخدم الحالي + ملفه الشخصي
+     * 🔹 جلب بيانات المستخدم الحالي + ملفه الشخصي + الدور
      */
     public function me(Request $request)
     {
@@ -30,9 +30,14 @@ class ProfileController extends Controller
             ? asset('storage/' . $profile->avatar)
             : null;
 
+        // جلب الدور الأول للمستخدم (إن وجد)
+        $role = $user->roles()->first(); // إذا للمستخدم أكثر من دور، نأخذ الأول
+
         return response()->json([
             'user' => $user,
             'profile' => $profile,
+            'role' => $role ? $role->name : null, // الدور الحقيقي هنا
+            'permissions' => $user->getAllPermissions()->pluck('name'), // الصلاحيات إذا احتجتها
         ]);
     }
 

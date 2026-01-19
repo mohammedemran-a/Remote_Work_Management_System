@@ -46,11 +46,20 @@ const Settings = () => {
   // ✅ جلب الإعدادات (مع صلاحية العرض)
   // ==========================
   useEffect(() => {
-    if (!canView) return;
+    // 🔒 إذا لا توجد صلاحية → أوقف التحميل فورًا
+    if (!canView) {
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
 
     const loadSettings = async () => {
+      setIsLoading(true);
       try {
         const data = await getSettings();
+
+        if (!isMounted) return;
 
         setForm((prev) => ({
           ...prev,
@@ -71,17 +80,23 @@ const Settings = () => {
 
         if (data.logo) {
           setLogoPreview(
-            import.meta.env.VITE_API_URL + "/storage/" + data.logo
+            import.meta.env.VITE_API_URL + "/storage/" + data.logo,
           );
         }
       } catch (error) {
         console.error(error);
       } finally {
-        setIsLoading(false); // ✅ بعد انتهاء التحميل
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadSettings();
+
+    return () => {
+      isMounted = false;
+    };
   }, [canView]);
 
   // ==========================
@@ -267,4 +282,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;  
+export default Settings;
