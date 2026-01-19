@@ -162,11 +162,15 @@ const ProjectsPage = () => {
   };
 
   if (isLoadingProjects || isLoadingUsers) {
-    return <div className="p-8 text-center">جاري تحميل البيانات...</div>;
+     <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">جاري تحميل البيانات...</p>
+      </div>
   }
   
   if (!user || !hasPermission("projects_view")) {
-    return <div className="p-8 text-center text-red-600">ليس لديك صلاحية لعرض هذه الصفحة.</div>;
+     <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-muted-foreground">ليس لديك صلاحية لعرض هذه الصفحة.</p>
+      </div>
   }
 
   return (
