@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react"; // 🗑️ سنحذف useCallback و useEffect إذا لم تكن هناك حاجة أخرى لهما
 import {
   Bell,
   Check,
@@ -39,7 +39,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/useAuthStore";
 
 // --------------------------------
-// Types
+// Types (No changes)
 // --------------------------------
 interface Notification {
   id: string;
@@ -63,41 +63,34 @@ const Notifications = () => {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuthStore();
 
-  // صلاحيات الصفحة
   const canView = hasPermission("notifications_view");
   const canDelete = hasPermission("notifications_delete");
 
-  // 🔴 Dialog states
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  // 🗑️ 1. حذف حالة التحميل اليدوية
+  // const [isLoading, setIsLoading] = useState(true);
+
+  // 🗑️ 2. حذف دالة fetchNotifications غير المستخدمة
+  // const fetchNotifications = useCallback(...)
 
   // --------------------------------
-  // Fetch notifications
+  // Fetch notifications with useQuery
   // --------------------------------
-  const fetchNotifications = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await queryClient.fetchQuery({
-        queryKey: ["notifications"],
-        queryFn: getAllNotifications,
-      });
-    } catch (err) {
-      // error handled in React Query's isError
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queryClient]);
-
-  const { data: notifications = [], isError } = useQuery({
+  // ✅ 3. استخدام isLoading و isError مباشرة من useQuery
+  const {
+    data: notifications = [],
+    isLoading, // <-- هذا هو الذي سنستخدمه
+    isError,
+  } = useQuery({
     queryKey: ["notifications"],
     queryFn: getAllNotifications,
-    enabled: canView, // ✅ لن يجلب البيانات إذا لم يكن لدى المستخدم صلاحية
+    enabled: canView,
     retry: false,
   });
 
   // --------------------------------
-  // Mutations
+  // Mutations (No changes needed here)
   // --------------------------------
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationAsRead(id),
@@ -124,44 +117,31 @@ const Notifications = () => {
   });
 
   // --------------------------------
-  // Helpers
+  // Helpers (No changes needed here)
   // --------------------------------
   const unreadCount = notifications.filter((n) => !n.read_at).length;
-
   const formatDate = (date: string) => new Date(date).toLocaleString("ar-EG");
-
   const getIcon = (type: string) => {
     switch (type) {
-      case "task":
-        return CheckCircle2;
-      case "project":
-        return FileText;
-      case "team":
-        return UserPlus;
-      case "reminder":
-        return Calendar;
-      default:
-        return Bell;
+      case "task": return CheckCircle2;
+      case "project": return FileText;
+      case "team": return UserPlus;
+      case "reminder": return Calendar;
+      default: return Bell;
     }
   };
-
   const getColor = (type: string) => {
     switch (type) {
-      case "task":
-        return "bg-blue-500/10 text-blue-600";
-      case "project":
-        return "bg-purple-500/10 text-purple-600";
-      case "team":
-        return "bg-green-500/10 text-green-600";
-      case "reminder":
-        return "bg-orange-500/10 text-orange-600";
-      default:
-        return "bg-primary/10 text-primary";
+      case "task": return "bg-blue-500/10 text-blue-600";
+      case "project": return "bg-purple-500/10 text-purple-600";
+      case "team": return "bg-green-500/10 text-green-600";
+      case "reminder": return "bg-orange-500/10 text-orange-600";
+      default: return "bg-primary/10 text-primary";
     }
   };
 
   // --------------------------------
-  // عدم السماح بالعرض إذا لم توجد صلاحية
+  // Render Logic
   // --------------------------------
   if (!canView) {
     return (
@@ -173,12 +153,27 @@ const Notifications = () => {
     );
   }
 
+  // ✅ 4. استخدام isLoading من useQuery لعرض الـ Skeleton
   if (isLoading) {
     return (
-      <div className="space-y-4 p-6">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-lg" />
-        ))}
+      <div className="space-y-4 p-6" dir="rtl">
+        <div className="flex items-center justify-between">
+            <Skeleton className="h-10 w-48" />
+            <div className="flex gap-2">
+                <Skeleton className="h-10 w-36" />
+                <Skeleton className="h-10 w-28" />
+            </div>
+        </div>
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                ))}
+            </CardContent>
+        </Card>
       </div>
     );
   }
@@ -192,7 +187,7 @@ const Notifications = () => {
   }
 
   // --------------------------------
-  // Render
+  // Render Component (No changes from here on)
   // --------------------------------
   return (
     <div className="space-y-6" dir="rtl">
@@ -295,7 +290,7 @@ const Notifications = () => {
         </CardContent>
       </Card>
 
-      {/* 🔴 Delete Single Dialog */}
+      {/* Dialogs (No changes) */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
@@ -319,7 +314,6 @@ const Notifications = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 🔴 Delete All Dialog */}
       <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
         <AlertDialogContent dir="rtl" className="text-right">
           <AlertDialogHeader>
