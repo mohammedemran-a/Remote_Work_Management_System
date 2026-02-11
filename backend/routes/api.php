@@ -101,6 +101,7 @@ Route::get('/projects/{projectId}/team-members', [ProjectController::class, 'get
     Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
     Route::post('/conversations', [ChatController::class, 'createConversation']);
     Route::post('/conversations/{conversation}/members', [ChatController::class, 'addMembers']);
+    Route::delete('/chat/messages', [ChatController::class, 'deleteMessages']);
 
     // --- لوحة التحكم ---
     Route::get('/dashboard', [DashboardController::class, 'index']);

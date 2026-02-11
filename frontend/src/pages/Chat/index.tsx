@@ -25,14 +25,12 @@ const ChatPage = () => {
     handleSendMessage,
     handleCreateConversation,
     handleAddMembers,
+    // ✅ 1. استقبال دوال الحذف من الهوك
+    handleDeleteMessages,
+    isDeletingMessages,
   } = useChatState();
 
   return (
-    /* الإصلاح الجذري: 
-       1. إزالة fixed و top-64 لأنها تسبب تداخلاً مع شريط الموقع.
-       2. استخدام flex-1 لتأخذ الحاوية ما تبقى من عرض الشاشة بجانب شريط الموقع.
-       3. استخدام h-[calc(100vh-64px)] لضمان الالتزام بطول الشاشة فقط.
-    */
     <div 
       className="flex-1 flex bg-background overflow-hidden h-[calc(100vh-64px)] w-full" 
       dir="rtl"
@@ -54,6 +52,9 @@ const ChatPage = () => {
         currentUserId={currentUserId}
         onSendMessage={handleSendMessage}
         onAddMembers={() => setIsAddMembersOpen(true)}
+        // ✅ 2. تمرير الدوال الجديدة إلى غرفة المحادثة
+        onDeleteMessages={handleDeleteMessages}
+        isDeleting={isDeletingMessages}
       />
 
       <ChatDialogs

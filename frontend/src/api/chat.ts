@@ -99,3 +99,17 @@ export const addMembersToConversation = async (conversationId: number, member_id
   const response = await api.post<{ data: Conversation }>(`/conversations/${conversationId}/members`, { member_ids });
   return response.data.data;
 };
+
+// ✅✅✅====== دالة حذف الرسائل (واحدة أو متعددة) ======✅✅✅
+/**
+ * ترسل طلبًا لحذف رسالة واحدة أو أكثر.
+ * @param messageIds مصفوفة من أرقام تعريف الرسائل المراد حذفها.
+ * @returns Promise يتم حله عند نجاح الحذف.
+ */
+export const deleteMessages = async (messageIds: number[]): Promise<void> => {
+  // نستخدم `api.delete` ونمرر `message_ids` في حقل `data`
+  // هذا هو المعيار الشائع لإرسال جسم الطلب مع طلبات DELETE
+await api.delete("/chat/messages", {
+    data: { message_ids: messageIds },
+  });
+};

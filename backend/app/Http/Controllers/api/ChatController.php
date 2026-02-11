@@ -102,4 +102,40 @@ class ChatController extends Controller
 
         return response()->json(['data' => $conversation], 200);
     }
+
+    /**
+     * ✅✅✅====== دالة حذف الرسائل (واحدة أو متعددة) ======✅✅✅
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteMessages(Request $request)
+    {
+        // 1. التحقق من صحة البيانات المرسلة (يجب أن تكون مصفوفة من الأرقام)
+        $validatedData = $request->validate([
+            'message_ids'   => 'required|array',
+            'message_ids.*' => 'integer|exists:messages,id', // التأكد من أن كل ID موجود في جدول الرسائل
+        ]);
+
+        $messageIds = $validatedData['message_ids'];
+        $user = Auth::user();
+
+        // 2. جلب الرسائل والتأكد من أن المستخدم الحالي هو من أرسلها
+        // هذا يمنع مستخدم من حذف رسائل مستخدم آخر
+        $messagesToDelete = Message::whereIn('id', $messageIds)
+                                   ->where('user_id', $user->id)
+                                   ->pluck('id'); // pluck للحصول على IDs فقط بكفاءة
+
+        // 3. التحقق من الصلاحية: إذا كان عدد الرسائل التي يملكها المستخدم
+        // لا يساوي عدد الرسائل المطلوب حذفها، فهذا يعني أنه يحاول حذف رسائل لا يملكها.
+        if ($messagesToDelete->count() !== count($messageIds)) {
+            return response()->json(['message' => 'لا يمكنك حذف رسائل لا تملكها.'], 403); // 403 Forbidden
+        }
+
+        // 4. تنفيذ الحذف فقط للرسائل التي تم التحقق من ملكيتها
+        Message::whereIn('id', $messagesToDelete)->delete();
+
+        // 5. إرجاع رسالة نجاح
+        return response()->json(['message' => 'تم حذف الرسائل بنجاح.']);
+    }
 }

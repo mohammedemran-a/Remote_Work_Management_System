@@ -126,7 +126,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await getCurrentUser();
 
       set({
-        user: res,
+        user: res.user || res,
         token: localStorage.getItem("token"),
         loading: false,
       });

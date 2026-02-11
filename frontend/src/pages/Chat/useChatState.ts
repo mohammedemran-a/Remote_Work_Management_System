@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/store/useAuthStore"; // ✅ المسار الصحيح
 import {
   getConversations,
   getMessages,
   sendMessage,
   createConversation,
   addMembersToConversation,
+  deleteMessages,
   Conversation,
   Message,
   NewConversationPayload,
@@ -21,10 +23,12 @@ interface Project {
   name: string;
 }
 
-const CURRENT_USER_ID = 1;
-
 export const useChatState = () => {
   const { toast } = useToast();
+  // ✅ الحصول على بيانات المستخدم الحالي من useAuthStore
+  const { user: currentUser } = useAuthStore();
+  const currentUserId = currentUser?.id || 0;
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
@@ -35,6 +39,7 @@ export const useChatState = () => {
   const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
   const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [isDeletingMessages, setIsDeletingMessages] = useState(false);
 
   const loadInitialData = useCallback(async () => {
     setLoadingConversations(true);
@@ -45,10 +50,8 @@ export const useChatState = () => {
         getProjects(),
       ]);
 
-      // 🟢 التعديل هنا: جلب الرسالة الأخيرة لكل محادثة عند التحميل الأول
       const conversationsWithLastMessages = await Promise.all(
         (convosData || []).map(async (conv: Conversation) => {
-          // إذا كانت الرسالة الأخيرة غير موجودة في بيانات المحادثة، نجلبها
           if (!conv.last_message) {
             try {
               const msgs = await getMessages(conv.id);
@@ -151,6 +154,22 @@ export const useChatState = () => {
     }
   };
 
+  const handleDeleteMessages = async (messageIds: number[]) => {
+    if (messageIds.length === 0) return;
+    setIsDeletingMessages(true);
+    try {
+      await deleteMessages(messageIds);
+      setMessages(prevMessages => 
+        prevMessages.filter(message => !messageIds.includes(message.id))
+      );
+      toast({ title: "نجاح", description: "تم حذف الرسائل المحددة." });
+    } catch (error) {
+      toast({ title: "خطأ", description: "فشل في حذف الرسائل.", variant: "destructive" });
+    } finally {
+      setIsDeletingMessages(false);
+    }
+  };
+
   const currentConversation = conversations.find(c => c.id === currentConversationId);
   const filteredConversations = conversations.filter(c =>
     c.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -163,7 +182,8 @@ export const useChatState = () => {
     currentConversation,
     allUsers,
     allProjects,
-    currentUserId: CURRENT_USER_ID,
+    currentUserId, // ✅ الآن يأتي من useAuthStore
+    
     loadingConversations,
     loadingMessages,
     isNewConversationOpen,
@@ -176,5 +196,7 @@ export const useChatState = () => {
     handleSendMessage,
     handleCreateConversation,
     handleAddMembers,
+    handleDeleteMessages,
+    isDeletingMessages,
   };
 };
