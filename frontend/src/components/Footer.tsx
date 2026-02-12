@@ -3,53 +3,20 @@ import { Input } from "@/components/ui/input";
 
 const Footer = () => {
   return (
-    <footer id="contact" className="bg-secondary text-secondary-foreground py-16 border-t border-border">
+    <footer id="contact" className="bg-secondary text-secondary-foreground py-12 border-t border-border">
       <div className="container mx-auto px-6">
-        <div className="grid lg:grid-cols-4 gap-8 mb-12">
-          <div className="lg:col-span-2">
-            <div className="text-3xl font-bold mb-4 text-primary">FnW</div>
-            <p className="text-muted-foreground mb-6 max-w-md">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+          {/* القسم الأيسر: الشعار والوصف */}
+          <div className="md:max-w-md">
+            <div className="text-2xl font-bold mb-3 text-primary">RWM</div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               تمكين الفرق عن بُعد بأدوات التعاون القوية وحلول الإدارة المتقدمة لبيئة العمل الحديثة.
             </p>
-            <div className="flex space-x-reverse space-x-4">
-              <Input 
-                placeholder="أدخل بريدك الإلكتروني" 
-                className="bg-background border-border"
-              />
-              <Button variant="default">
-                اشترك
-              </Button>
-            </div>
           </div>
-          
-          <div>
-            <h3 className="font-semibold mb-4 text-foreground">المميزات</h3>
-            <ul className="space-y-2 text-muted-foreground">
-              <li><a href="#" className="hover:text-primary transition-colors">التعاون الجماعي</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">تتبع الوقت</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">تحليلات التقدم</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">إدارة المهام</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold mb-4 text-foreground">الشركة</h3>
-            <ul className="space-y-2 text-muted-foreground">
-              <li><a href="#about" className="hover:text-primary transition-colors">من نحن</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">الوظائف</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">المدونة</a></li>
-              <li><a href="#contact" className="hover:text-primary transition-colors">تواصل معنا</a></li>
-            </ul>
-          </div>
-        </div>
-        
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-muted-foreground mb-4 md:mb-0">
-            © 2024 FnW. جميع الحقوق محفوظة.
-          </p>
-          <div className="flex space-x-reverse space-x-6 text-muted-foreground">
-            <a href="#" className="hover:text-primary transition-colors">سياسة الخصوصية</a>
-            <a href="#" className="hover:text-primary transition-colors">شروط الاستخدام</a>
+
+          {/* القسم الأيمن: النص السفلي */}
+          <div className="text-sm text-muted-foreground">
+            <p>© 2024 RWM. جميع الحقوق محفوظة.</p>
           </div>
         </div>
       </div>

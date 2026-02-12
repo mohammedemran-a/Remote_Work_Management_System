@@ -41,7 +41,7 @@ const ContactForm = () => {
             تواصل معنا
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            هل لديك أسئلة حول FnW؟ فريقنا مستعد لمساعدتك في العثور على الحل المناسب لفريقك.
+            هل لديك أسئلة حول RWM فريقنا مستعد لمساعدتك في العثور على الحل المناسب لفريقك.
           </p>
         </div>
 
@@ -69,8 +69,8 @@ const ContactForm = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">+966 11 123 4567</p>
-                <p className="text-muted-foreground">+966 55 987 6543</p>
+                <p className="text-muted-foreground">+967 778 507 265</p>
+                <p className="text-muted-foreground">+967 783 251 951</p>
               </CardContent>
             </Card>
 
@@ -88,82 +88,6 @@ const ContactForm = () => {
             </Card>
           </div>
 
-          {/* Contact Form */}
-          <Card className="border-2 border-border shadow-soft">
-            <CardHeader>
-              <CardTitle className="text-foreground">أرسل لنا رسالة</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">الاسم</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="أدخل اسمك"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">البريد الإلكتروني</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="أدخل بريدك الإلكتروني"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">رقم الهاتف</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="أدخل رقم هاتفك"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">اسم الشركة</Label>
-                    <Input
-                      id="company"
-                      name="company"
-                      value={formData.company}
-                      onChange={handleChange}
-                      placeholder="أدخل اسم شركتك"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">الرسالة</Label>
-                  <Textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    placeholder="اكتب رسالتك هنا..."
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" className="w-full shadow-button">
-                  <Send className="w-4 h-4 mr-2" />
-                  إرسال الرسالة
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </section>
