@@ -1,10 +1,11 @@
 // src/pages/Reports/useReportsState.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTasks, TaskResponse } from "@/api/task";
 import { getProjects, Project } from "@/api/project";
 import { fetchUsers, User } from "@/api/users";
 
-// --- واجهات البيانات ---
+/* ================= TYPES ================= */
 export interface ReportStats {
   totalTasks: number;
   completedTasks: number;
@@ -28,39 +29,67 @@ export interface TeamMemberPerformance {
   efficiency: number;
 }
 
+/* ================= CONSTANTS ================= */
+const QUERY_KEYS = {
+  tasks: ["tasks"],
+  projects: ["projects"],
+  users: ["users"],
+  reports: ["reports"],
+};
+
+const CACHE_TIME = 1000 * 60 * 10; // 10 دقائق
+const STALE_TIME = 1000 * 60 * 5; // 5 دقائق
+
+/* ================= HOOK ================= */
 export const useReportsState = () => {
-  const [tasks, setTasks] = useState<TaskResponse[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [tasksData, projectsData, usersData] = await Promise.all([
-          getTasks(), 
-          getProjects(),
-          fetchUsers()
-        ]);
-        setTasks(tasksData || []);
-        setProjects(projectsData || []);
-        setUsers(usersData || []);
-      } catch (error) {
-        console.error("خطأ أثناء جلب بيانات التقارير:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  /* ============== REACT QUERY: جلب المهام ============== */
+  const {
+    data: tasks = [],
+    isLoading: loadingTasks,
+  } = useQuery({
+    queryKey: QUERY_KEYS.tasks,
+    queryFn: getTasks,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
 
+  /* ============== REACT QUERY: جلب المشاريع ============== */
+  const {
+    data: projects = [],
+    isLoading: loadingProjects,
+  } = useQuery({
+    queryKey: QUERY_KEYS.projects,
+    queryFn: getProjects,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
+    retry: 2,
+  });
+
+  /* ============== REACT QUERY: جلب المستخدمين ============== */
+  const {
+    data: users = [],
+    isLoading: loadingUsers,
+  } = useQuery({
+    queryKey: QUERY_KEYS.users,
+    queryFn: fetchUsers,
+    staleTime: STALE_TIME,
+    gcTime: CACHE_TIME,
+    retry: 2,
+  });
+
+  const loading = loadingTasks || loadingProjects || loadingUsers;
+
+  /* ============== COMPUTED DATA ============== */
   const data = useMemo(() => {
     const now = new Date();
     
-    // ✅ 1. حساب قائمة المهام المتأخرة الفعلية بدلاً من الاعتماد على حالة "متأخرة"
+    // ✅ حساب قائمة المهام المتأخرة الفعلية
     const overdueTasksList = tasks.filter(t => {
       const dueDate = t.due_date ? new Date(t.due_date) : null;
-      // المهمة متأخرة إذا لم تكن مكتملة ولها تاريخ تسليم قد مضى
       return t.status !== "مكتملة" && dueDate && dueDate < now;
     });
 
@@ -72,7 +101,7 @@ export const useReportsState = () => {
       totalTasks,
       completedTasks,
       inProgressTasks,
-      tasksOverdue: overdueTasksList.length, // استخدام عدد القائمة المحسوبة
+      tasksOverdue: overdueTasksList.length,
       completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
     };
 
@@ -80,19 +109,26 @@ export const useReportsState = () => {
       const projectTasks = tasks.filter(t => Number(t.project_id) === Number(project.id));
       const doneCount = projectTasks.filter(t => t.status === "مكتملة").length;
       const ratio = projectTasks.length > 0 ? Math.round((doneCount / projectTasks.length) * 100) : 0;
-      return { id: project.id, name: project.name, completion: ratio, status: project.status || "نشط" };
+      return { 
+        id: project.id, 
+        name: project.name, 
+        completion: ratio, 
+        status: project.status || "نشط" 
+      };
     });
 
     const taskStatusData = [
       { name: "مكتملة", value: completedTasks, color: "#22c55e" },
       { name: "قيد التنفيذ", value: inProgressTasks, color: "#3b82f6" },
-      { name: "متأخرة", value: overdueTasksList.length, color: "#ef4444" } // استخدام العدد الصحيح هنا أيضًا
+      { name: "متأخرة", value: overdueTasksList.length, color: "#ef4444" }
     ];
 
     const teamPerformance: TeamMemberPerformance[] = users.map(user => {
       const assignedTasks = tasks.filter(task => task.assigned_to === user.id);
       const completedAssignedTasks = assignedTasks.filter(task => task.status === 'مكتملة').length;
-      const efficiency = assignedTasks.length > 0 ? Math.round((completedAssignedTasks / assignedTasks.length) * 100) : 0;
+      const efficiency = assignedTasks.length > 0 
+        ? Math.round((completedAssignedTasks / assignedTasks.length) * 100) 
+        : 0;
 
       return {
         id: user.id,
@@ -103,9 +139,27 @@ export const useReportsState = () => {
       };
     }).filter(member => member.tasksAssigned > 0);
 
-    // ✅ 2. إرجاع قائمة المهام المتأخرة مع بقية البيانات لتستخدمها في QuickReports
-    return { stats, projectProgress, taskStatusData, teamPerformance, overdueTasksList, tasks, projects };
+    return { 
+      stats, 
+      projectProgress, 
+      taskStatusData, 
+      teamPerformance, 
+      overdueTasksList, 
+      tasks, 
+      projects 
+    };
   }, [tasks, projects, users]);
 
-  return { loading, ...data };
+  /* ============== MANUAL REFETCH (للملف الشخصي والمشاريع والمهام) ============== */
+  const refetchReports = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
+  };
+
+  return { 
+    loading, 
+    ...data,
+    refetchReports, // للملف الشخصي والمشاريع والمهام
+  };
 };

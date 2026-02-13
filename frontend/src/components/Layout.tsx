@@ -19,9 +19,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import NotificationSidebar from "@/components/NotificationSidebar";
 import { getSettings } from "@/api/settings";
+import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 
 const Layout = () => {
@@ -29,6 +31,7 @@ const Layout = () => {
   const isChatRoute = location.pathname.startsWith("/chat");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user: currentUser } = useAuthStore();
 
   // ==========================
   // ✅ إعدادات النظام
@@ -157,6 +160,26 @@ const Layout = () => {
             );
           })}
         </nav>
+
+        {/* ✅ Sidebar Footer - User Info */}
+        <div className="border-t p-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg">
+            <Avatar className="h-10 w-10 flex-shrink-0">
+              <AvatarImage src={currentUser?.avatar} alt={currentUser?.name} />
+              <AvatarFallback>
+                {currentUser?.name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {currentUser?.name || "المستخدم"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentUser?.email}
+              </p>
+            </div>
+          </div>
+        </div>
       </aside>
 
       {/* Main */}

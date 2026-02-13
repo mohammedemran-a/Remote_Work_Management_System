@@ -1,28 +1,52 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import defaultLogo from "@/assets/Logo.jpg";
 import { getSettings } from "@/api/settings";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useQueryClient } from "@tanstack/react-query";
+
+/* ================= QUERY KEYS ================= */
+const QUERY_KEYS = {
+  users: ["users"],
+  reports: ["reports"],
+  teams: ["teams"],
+  conversations: ["conversations"],
+};
 
 const Header = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [logo, setLogo] = useState<string>(defaultLogo);
   const [systemName, setSystemName] = useState<string>("إدارة العمل عن بعد");
 
   // ✅ Auth
-  const { token, logout } = useAuthStore();
+  const { token, logout, user: currentUser, fetchUser } = useAuthStore();
   const isAuthenticated = !!token;
+
+  // ✅ جلب بيانات المستخدم عند التحميل الأول
+  useEffect(() => {
+    if (isAuthenticated && !currentUser) {
+      fetchUser();
+    }
+  }, [isAuthenticated, currentUser, fetchUser]);
 
   const navLinks = [
     { href: "#features", label: "المميزات" },
     { href: "#solutions", label: "الحلول" },
     { href: "#contact", label: "تواصل معنا" },
-    { href: "#about", label: "من نحن" },
   ];
 
   const handleNavClick = (href: string) => {
@@ -37,6 +61,18 @@ const Header = () => {
     navigate("/auth");
   };
 
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
+
+  /* ============== تحديث البيانات المرتبطة عند الدخول للملف الشخصي ============== */
+  const invalidateRelatedQueries = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.reports });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.teams });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversations });
+  };
+
   // ==========================
   // ✅ جلب إعدادات النظام
   // ==========================
@@ -47,7 +83,7 @@ const Header = () => {
 
         if (data.logo && typeof data.logo === "string") {
           setLogo(
-            data.logo.startsWith("http")
+            data.logo.startsWith("http" )
               ? data.logo
               : `${import.meta.env.VITE_APP_API_URL}/storage/${data.logo}`
           );
@@ -109,18 +145,56 @@ const Header = () => {
           </div>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-reverse space-x-3">
+          <div className="hidden md:flex items-center space-x-reverse space-x-4">
             <ThemeToggle />
 
-            {isAuthenticated ? (
-              <Button
-                variant="destructive"
-                className="flex items-center gap-2 hover:scale-105 transition-all"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                تسجيل الخروج
-              </Button>
+            {isAuthenticated && currentUser ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">
+                        {currentUser.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {currentUser.email}
+                      </p>
+                    </div>
+                    <Avatar className="h-10 w-10 border-2 border-primary/30">
+                      <AvatarImage
+                        src={currentUser.avatar_url || undefined}
+                        alt={currentUser.name}
+                      />
+                      <AvatarFallback className="bg-primary/10">
+                        <User className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      handleProfileClick();
+                      invalidateRelatedQueries();
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <User className="ml-2 h-4 w-4" />
+                    الملف الشخصي
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-600 hover:text-red-700"
+                  >
+                    <LogOut className="ml-2 h-4 w-4" />
+                    تسجيل الخروج
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button
                 variant="default"
@@ -143,6 +217,29 @@ const Header = () => {
 
               <SheetContent side="right" className="w-[280px] pt-12">
                 <nav className="flex flex-col space-y-6 text-right">
+                  {/* بيانات المستخدم في الموبايل */}
+                  {isAuthenticated && currentUser && (
+                    <div className="flex items-center gap-3 pb-4 border-b border-border">
+                      <Avatar className="h-12 w-12 border-2 border-primary/30">
+                        <AvatarImage
+                          src={currentUser.avatar_url || undefined}
+                          alt={currentUser.name}
+                        />
+                        <AvatarFallback className="bg-primary/10">
+                          <User className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {currentUser.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {currentUser.email}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {navLinks.map((link) => (
                     <a
                       key={link.href}
@@ -167,13 +264,28 @@ const Header = () => {
                   )}
 
                   {isAuthenticated ? (
-                    <Button
-                      variant="destructive"
-                      className="w-full mt-4"
-                      onClick={handleLogout}
-                    >
-                      تسجيل الخروج
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setIsOpen(false);
+                          handleProfileClick();
+                          invalidateRelatedQueries();
+                        }}
+                      >
+                        <User className="ml-2 h-4 w-4" />
+                        الملف الشخصي
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="ml-2 h-4 w-4" />
+                        تسجيل الخروج
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       variant="default"

@@ -74,7 +74,7 @@ class RolePermissionSeeder extends Seeder
 
         // 🔹 إنشاء حساب المدير الأساسي
         $admin = User::firstOrCreate(
-            ['email' => 'admin@gmail.com'],
+            ['email' => '@gmail.coadminm'],
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('12345678'),
